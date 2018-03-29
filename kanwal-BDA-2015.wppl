@@ -1,0 +1,379 @@
+/***
+Scenarios
+=========
+
+Combined: Costs and accuracy pressure
+  + priors are [0.75, 0.25]
+  + costs are relative to length
+  + alpha is inferred
+  [X] Data seems to make sense
+
+Accuracy: No cost difference in sending names
+  + costs are 0
+  [X] Data seems to make sense
+
+Time: No communicative partner (remove priors, but include costs) -- everyone uses zop
+  + No communicative act so remove literal semantics (uniformDraw in all cases)
+
+Neither: No communicative partner, no cost
+  + remove literal semantics
+  + costs are 0
+
+
+***/
+
+var alphas = _.range(1, 20)
+var alphaDistr = Categorical({ps:repeat(alphas.length, function() {return 1}), vs:alphas})
+// var alphaDistr = map(function(x) {x + 1}, RandomInteger({n:20}))
+var alphaPrior = function() { 
+  return sample(alphaDistr)
+}
+var costsType = ['present', 'not_present']
+var costsTypeDistr = Categorical({vs:['present', 'not_present'], ps:[1, 1]})
+var costsTypePrior = function() {
+  return sample(costsTypeDistr)
+}
+var getCosts = function(costType){
+  if (costType == 'present') {
+    return {
+        'zop': 0.3,
+        'zopekil': 0.7,
+        'zopudon': 0.7
+      }
+  } else if (costType == 'not_present') {
+    return {
+        'zop': 0.0,
+        'zopekil': 0.0,
+        'zopudon': 0.0
+      }
+  }
+}
+
+var recursionLevels = [1, 2]
+var recursionLevelsDistr = Categorical({vs: recursionLevels, ps: [1, 1]})
+var recursionLevelsPrior = function() {
+  return sample(recursionLevelsDistr)
+}
+
+var semanticsTypes = ['present', 'not_present']
+var semanticsTypesDistr = Categorical({vs: semanticsTypes, ps: [1, 1]})
+var semanticsTypesPrior = function() {
+  return sample(semanticsTypesDistr)
+}
+
+var priorsType = ['present', 'not_present']
+var priorsTypeDistr = Categorical({vs: priorsType, ps: [1, 1]})
+var priorsTypePrior = function() {
+	return sample(priorsTypeDistr)
+}
+
+var experimentalData = [
+  {'IP': '100.10.40.83',
+  'condition': 'combined',
+  'frequent': 1.0,
+  'infrequent': 0.0},
+ {'IP': '100.2.122.157',
+  'condition': 'combined',
+  'frequent': 0.96,
+  'infrequent': 0.0},
+//  {'IP': '104.174.222.43',
+//   'condition': 'combined',
+//   'frequent': 0.0,
+//   'infrequent': 0.5},
+ {'IP': '107.161.163.8',
+  'condition': 'combined',
+  'frequent': 0.08,
+  'infrequent': 0.0},
+ {'IP': '115.99.18.32',
+  'condition': 'combined',
+  'frequent': 0.21,
+  'infrequent': 0.0},
+ {'IP': '117.213.33.129',
+  'condition': 'combined',
+  'frequent': 0.04,
+  'infrequent': 0.0},
+//  {'IP': '117.229.19.52',
+//   'condition': 'combined',
+//   'frequent': 0.0,
+//   'infrequent': 1.0},
+//  {'IP': '122.161.26.31',
+//   'condition': 'combined',
+//   'frequent': 0.42,
+//   'infrequent': 0.62},
+ {'IP': '162.239.52.23',
+  'condition': 'combined',
+  'frequent': 0.92,
+  'infrequent': 0.0},
+ {'IP': '163.47.15.206',
+  'condition': 'combined',
+  'frequent': 0.21,
+  'infrequent': 0.0},
+ {'IP': '172.91.192.214',
+  'condition': 'combined',
+  'frequent': 0.75,
+  'infrequent': 0.0},
+ {'IP': '174.71.79.180',
+  'condition': 'combined',
+  'frequent': 1.0,
+  'infrequent': 0.0},
+ {'IP': '182.65.31.144',
+  'condition': 'combined',
+  'frequent': 0.75,
+  'infrequent': 0.0},
+ {'IP': '24.167.83.155',
+  'condition': 'combined',
+  'frequent': 0.0,
+  'infrequent': 0.0},
+ {'IP': '24.20.229.200',
+  'condition': 'combined',
+  'frequent': 0.96,
+  'infrequent': 0.12},
+ {'IP': '24.253.233.194',
+  'condition': 'combined',
+  'frequent': 0.96,
+  'infrequent': 0.12},
+ {'IP': '24.33.78.134',
+  'condition': 'combined',
+  'frequent': 0.88,
+  'infrequent': 0.0},
+ {'IP': '38.88.53.50',
+  'condition': 'combined',
+  'frequent': 0.0,
+  'infrequent': 0.0},
+ {'IP': '49.206.202.131',
+  'condition': 'combined',
+  'frequent': 1.0,
+  'infrequent': 0.0},
+ {'IP': '50.150.62.48',
+  'condition': 'combined',
+  'frequent': 0.71,
+  'infrequent': 0.62},
+ {'IP': '50.153.162.232',
+  'condition': 'combined',
+  'frequent': 0.75,
+  'infrequent': 0.25},
+ {'IP': '59.93.15.89',
+  'condition': 'combined',
+  'frequent': 0.62,
+  'infrequent': 0.12},
+ {'IP': '59.98.251.98',
+  'condition': 'combined',
+  'frequent': 0.96,
+  'infrequent': 0.0},
+ {'IP': '65.183.140.246',
+  'condition': 'combined',
+  'frequent': 0.92,
+  'infrequent': 0.38},
+ {'IP': '66.56.8.213',
+  'condition': 'combined',
+  'frequent': 0.62,
+  'infrequent': 0.0},
+ {'IP': '67.85.42.18',
+  'condition': 'combined',
+  'frequent': 0.92,
+  'infrequent': 0.0},
+ {'IP': '68.114.220.220',
+  'condition': 'combined',
+  'frequent': 0.04,
+  'infrequent': 0.0},
+ {'IP': '68.63.39.20',
+  'condition': 'combined',
+  'frequent': 0.54,
+  'infrequent': 0.0},
+ {'IP': '69.65.45.56',
+  'condition': 'combined',
+  'frequent': 0.92,
+  'infrequent': 0.0},
+ {'IP': '72.182.90.103',
+  'condition': 'combined',
+  'frequent': 0.67,
+  'infrequent': 0.12},
+ {'IP': '72.9.28.126',
+  'condition': 'combined',
+  'frequent': 0.0,
+  'infrequent': 0.0},
+ {'IP': '73.11.80.136',
+  'condition': 'combined',
+  'frequent': 0.58,
+  'infrequent': 0.0},
+ {'IP': '73.197.156.172',
+  'condition': 'combined',
+  'frequent': 0.0,
+  'infrequent': 1.0},
+//  {'IP': '73.246.28.166',
+//   'condition': 'combined',
+//   'frequent': 0.0,
+//   'infrequent': 0.88},
+ {'IP': '74.74.166.82',
+  'condition': 'combined',
+  'frequent': 0.04,
+  'infrequent': 0.0},
+ {'IP': '74.87.33.130',
+  'condition': 'combined',
+  'frequent': 0.96,
+  'infrequent': 0.0}]
+
+var model = function(d) {
+  var _model = function() {
+    // Infer below
+    var alpha = alphaPrior()
+    var costsType = costsTypePrior()
+    var recursionLevel = recursionLevelsPrior()
+    var semanticsType = semanticsTypesPrior()
+    var priorsType = priorsTypePrior()
+
+    // Utteranecs
+    var utterances = ['zop', 'zopekil', 'zopudon']
+    var utterancesDistr = Categorical({vs:utterances, ps:[1, 1, 1]})
+    var utterancesPrior = function() { 
+      return sample(utterancesDistr)
+    }
+
+    // Worlds
+    var worldsPriorWeights = priorsType == "present" ? [24, 8] : [1, 1]
+    var worlds = [{'d':'zopudon'}, {'d':'zopekil'}]
+    var worldsDistr = Categorical({vs:worlds, ps:worldsPriorWeights})
+    var worldsPrior = function() { 
+      return sample(worldsDistr)
+    }
+
+    var cost = function(utterance, costsType) {
+      var costs = getCosts(costsType)
+      return costs[utterance]
+    }
+
+    var utteranceMeaning = function(u, semanticsType) {
+      if (semanticsType == 'present') {
+        if (u == 'zop') {
+          return uniformDraw(['zopekil', 'zopudon'])
+        } else {
+          return u
+        }
+      } else if (semanticsType == 'not_present') {
+        return uniformDraw(['zopekil', 'zopudon'])
+      }
+    }
+
+    var litMeaning = function(utterance, world) {
+      return utterance == world['d']
+    }
+
+    var L0 = cache(function(utterance, semanticsType) {
+      Infer({
+        model() {
+          var world = worldsPrior()
+          var meaning = litMeaning(utteranceMeaning(utterance, semanticsType), world)
+          factor(meaning ? 0 : -Infinity)
+          return world
+        }
+      })
+    })
+
+    var S1 = cache(function(world, semanticsType) {
+      Infer({
+        model() {
+          var utterance = utterancesPrior()
+          var L = L0(utterance, semanticsType)
+          factor(alpha * (L.score(world) - cost(utterance, costsType)))
+          return utterance
+        }
+      })
+    })
+
+    var L1 = cache(function(utterance, semanticsType) {
+      Infer({
+        model() {
+          var world = worldsPrior()
+          var S = S1(world, semanticsType)
+          factor(S.score(utterance))
+          return world
+        }
+      })
+    })
+
+    var S2 = cache(function(world, semanticsType) {
+      Infer({
+        model() {
+          var utterance = utterancesPrior()
+          var L = L1(utterance, semanticsType)
+          factor(alpha * (L.score(world) - cost(utterance, costsType)))
+          return utterance
+        }
+      })
+    })
+    
+    var getModel = function(recursionLevel) {
+      if (recursionLevel == 1) {
+        return S1
+      } else if (recursionLevel == 2) {
+        return S2
+      }
+    }
+
+    var runSpeaker = function(n, typ, recursionLevel, semanticsType) {
+      Infer({
+        method: "MCMC", 
+        samples: 200, 
+        burn: 50,
+        model() {
+          var _getProportion = function(data, target) {
+            return filter(function(x) {return x == target}, data).length / data.length
+          }
+          var _model = getModel(recursionLevel)
+          var world = typ == 'frequent' ? {d:'zopudon'} : {d:'zopekil'}
+          var data = repeat(n, function() {
+            return sample(_model(world, semanticsType))
+          })
+          var prop = _getProportion(data, 'zop')
+          return prop
+        }
+      })
+    }
+
+//     map(function(x) {
+    var frequent_prop = d['frequent']
+    var infrequent_prop = d['infrequent']
+    observe(runSpeaker(100, 'frequent', recursionLevel, semanticsType), frequent_prop)
+    observe(runSpeaker(100, 'infrequent', recursionLevel, semanticsType), infrequent_prop)
+//     }, d)
+    return {'alpha': alpha, 
+            'costsType': costsType, 
+            'recursionLevel': recursionLevel,
+            'semanticsType': semanticsType,
+            'priorsType': priorsType }
+  }
+  return _model
+}
+
+ 
+var opts = { method: "MCMC",
+            onlyMAP:true, 
+            callbacks: [editor.MCMCProgress()], 
+            samples: 100, 
+            burn: 20 };
+
+// var res = map(function(x) {
+//   console.log('IP', x['IP'])
+//   var currModel = model(x)
+//   var currPosterior = Infer(opts, currModel)
+//   var currAlpha = sample(marginalize(currPosterior, function(x) {
+//     return x['alpha']
+//   }))
+//   var currCostsType = sample(marginalize(currPosterior, function(x) {
+//     return x['costsType']
+//   }))
+//   var recursionLevel = sample(marginalize(currPosterior, function(x) {
+//     return x['recursionLevel']
+//   }))
+//   return {'IP': x['IP'],
+//           'alpha': currAlpha,
+//           'costsType': currCostsType,
+//           'recursionLevel': recursionLevel}
+// }, experimentalData)
+// res
+
+viz.table(Infer(opts,
+                model({'IP': '24.20.229.200',
+                       'condition': 'combined',
+                       'frequent': 0.54,
+                       'infrequent': 0.45})))

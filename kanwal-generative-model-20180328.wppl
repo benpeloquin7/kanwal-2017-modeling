@@ -1,0 +1,308 @@
+/***
+Scenarios
+=========
+
+Combined: Costs and accuracy pressure
+  + priors are [0.75, 0.25]
+  + costs are relative to length
+  + alpha is inferred
+  [X] Data seems to make sense
+
+Accuracy: No cost difference in sending names
+  + costs are 0
+  [X] Data seems to make sense
+
+Time: No communicative partner (remove priors, but include costs) -- everyone uses zop
+  + No communicative act so remove literal semantics (uniformDraw in all cases)
+
+Neither: No communicative partner, no cost
+  + remove literal semantics
+  + costs are 0
+
+
+***/
+
+var alphas = _.range(1, 20)
+var alphaDistr = Categorical({ps:repeat(alphas.length, function() {return 1}), vs:alphas})
+// var alphaDistr = map(function(x) {x + 1}, RandomInteger({n:20}))
+var alphaPrior = function() { 
+  return sample(alphaDistr)
+}
+var costTypes = ['present', 'not_present', 'reversed']
+var costsTypeDistr = Categorical({vs:costTypes, ps:[1, 1, 1]})
+var costsTypePrior = function() {
+  return sample(costsTypeDistr)
+}
+var getCosts = function(costType){
+  if (costType == 'present') {
+    return {
+        'zop': 0.3,
+        'zopekil': 0.7,
+        'zopudon': 0.7
+      }
+  } else if (costType == 'not_present') {
+    return {
+        'zop': 0.0,
+        'zopekil': 0.0,
+        'zopudon': 0.0
+      }
+  } else if (costType == 'reversed') {
+    return {
+        'zop': 0.7,
+        'zopekil': 0.3,
+        'zopudon': 0.3
+      }
+  }
+}
+
+var experimentalData = [
+  {'IP': '100.10.40.83',
+  'condition': 'combined',
+  'frequent': 1.0,
+  'infrequent': 0.0},
+ {'IP': '100.2.122.157',
+  'condition': 'combined',
+  'frequent': 0.96,
+  'infrequent': 0.0},
+//  {'IP': '104.174.222.43',
+//   'condition': 'combined',
+//   'frequent': 0.0,
+//   'infrequent': 0.5},
+ {'IP': '107.161.163.8',
+  'condition': 'combined',
+  'frequent': 0.1,
+  'infrequent': 0.0}]
+
+
+//  Strategies
+var combination = {
+  "alpha": 6,
+  "costsType": "present",
+  "semanticsType": "present",
+  "recursionLevel": 2,
+  "priors": "present"
+}
+
+var accuracy = {
+  "alpha": 12,
+  "costsType": "not_present",
+  "semanticsType": "present",
+  "recursionLevel": 1,
+  "priors": "present"
+}
+
+var time = {
+  "alpha": 6,
+  "costsType": "present",
+  "semanticsType": "not_present",
+  "recursionLevel": 1,
+  "priors": "not_present"
+}
+
+var neither = {
+  "alpha": 6,
+  "costsType": "not_present",
+  "semanticsType": "not_present",
+  "recursionLevel": 2,
+  "priors": "not_present"
+}
+
+var other = {
+  "alpha": 10,
+  "costsType": "present",
+  "semanticsType": "present",
+  "recursionLevel": 2,
+  "priors": "reversed"
+}
+
+// var alpha = alphaPrior()
+// var costsType = costsTypePrior()
+// var costsType = 'not_present'
+// var alpha = 12
+
+var run = function(strategyData, world) {
+  var alpha = strategyData['alpha']
+  var costsType = strategyData['costsType']
+  var semanticsType = strategyData['semanticsType']
+  var recursionLevel = strategyData['recursionLevel']
+  var priorsType  = strategyData['priors']
+  
+  // Utteranecs
+  var utterances = ['zop', 'zopekil', 'zopudon']
+  var utterancesDistr = Categorical({vs:utterances, ps:[1, 1, 1]})
+  var utterancesPrior = function() { 
+    return sample(utterancesDistr)
+  }
+
+  // Worlds
+  var getWorldsPriorWeights = function(priorsType) {
+    if (priorsType == 'present') {
+      return [24, 8]
+    } else if (priorsType == 'not_present') {
+      return [1, 1]
+    } else if (priorsType == 'reversed') {
+      return [8, 24]
+    }
+  }
+  
+  var worldsPriorWeights = getWorldsPriorWeights(priorsType)
+  var worlds = [{'d':'zopudon'}, {'d':'zopekil'}]
+  var worldsDistr = Categorical({vs: worlds, ps: worldsPriorWeights})
+  var worldsPrior = function() { 
+    return sample(worldsDistr)
+  }
+
+  var cost = function(utterance, costsType) {
+    var costs = getCosts(costsType)
+    return costs[utterance]
+  }
+
+  var utteranceMeaning = function(u, semanticsType) {
+    if (semanticsType == "present") {
+      if (u == 'zop') {
+        return uniformDraw(['zopekil', 'zopudon'])
+      } else {
+        return u
+      } 
+    } else if (semanticsType == "not_present") {
+      return uniformDraw(['zopekil', 'zopudon'])
+    } else {
+      console.log("Error bad semantics type:", semanticsType)
+    }
+  }
+
+  var litMeaning = function(utterance, world) {
+    return utterance == world['d']
+  }
+
+  var L0 = cache(function(utterance) {
+    Infer({
+      model() {
+        var world = worldsPrior()
+        var meaning = litMeaning(utteranceMeaning(utterance, semanticsType), world)
+        factor(meaning ? 0 : -Infinity)
+        return world
+      }
+    })
+  })
+
+  var S1 = cache(function(world) {
+    Infer({
+      model() {
+        var utterance = utterancesPrior()
+        var L = L0(utterance)
+        factor(alpha * (L.score(world) - cost(utterance, costsType)))
+        return utterance
+      }
+    })
+  })
+
+  var L1 = cache(function(utterance) {
+    Infer({
+      model() {
+        var world = worldsPrior()
+        var meaning = litMeaning(utteranceMeaning(utterance, semanticsType), world)
+        var S = S1(world)
+        factor(S.score(utterance))
+        return world
+      }
+    })
+  })
+
+  var S2 = cache(function(world) {
+    Infer({
+      model() {
+        var utterance = utterancesPrior()
+        var L = L1(utterance)
+        factor(alpha * (L.score(world) - cost(utterance, costsType)))
+        return utterance
+      }
+    })
+  })
+  
+  var getModel = function(recursionLevel) {
+      if (recursionLevel == 1) {
+        return S1
+      } else if (recursionLevel == 2) {
+        return S2
+      }
+    }
+
+  var runSpeaker = function(n, typ) {
+    Infer({
+      method: "MCMC", 
+      samples: 200, 
+      burn: 50,
+      model() {
+        var _getProportion = function(data, target) {
+          return filter(function(x) {return x == target}, data).length / data.length
+        }
+        var world = typ == 'frequent' ? {d:'zopudon'} : {d:'zopekil'}
+        var data = repeat(n, function() {
+          return sample(S2(world))
+        })
+        var prop = _getProportion(data, 'zop')
+        return prop
+      }
+    })
+  }
+  
+  var _model = getModel(recursionLevel)
+  return sample(_model(world))
+}
+
+var data = {
+  "frequent": 24,
+  "infrequent": 8
+}
+
+var runExperiment = function(participantNum, data, strategyName) {
+  var strategies = {
+    'combination': combination,
+    'accuracy': accuracy,
+    'time': time,
+    'neither': neither,
+    'other': other
+  }
+  var strategy = strategies[strategyName]
+  var n_frequent = data['frequent']
+  var n_infrequent = data['infrequent']
+  var trials_frequent =  _.range(n_frequent)
+  var trials_infrequent =  _.range(n_infrequent)
+  var w_frequent = {d:'zopudon'}
+  var w_infrequent = {d:'zopekil'}
+  var d_frequent = map(function(x) {
+    var utterance = run(strategy, w_frequent)
+    return {
+      "participantNum": participantNum,
+      "condition": strategyName,
+      "trialType": "frequent",
+      "trialNum": x,
+      "utterance": utterance
+    }}, trials_frequent)
+  var d_infrequent = map(function(x) {
+    var utterance = run(strategy, w_infrequent)
+    return {
+      "participantNum": participantNum,
+      "condition": strategyName,
+      "trialType": "infrequent",
+      "trialNum": x,
+      "utterance": utterance
+    }}, trials_infrequent)
+  var allData = d_frequent.concat(d_infrequent)
+  return allData
+}
+
+
+var n_participants = 30
+var runExperiments = function(n_participants, data, strategyName) {
+  return map(function(participant) {
+    runExperiment(participant, data, strategyName)
+  }, _.range(n_participants))
+}
+
+var flatten = function(arr) {
+  return [].concat.apply([], arr)
+}
+var res = runExperiments(n_participants, data, 'other')
+flatten(res)
