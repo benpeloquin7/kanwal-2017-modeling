@@ -1,24 +1,11 @@
 /***
-Scenarios
-=========
 
-Combined: Costs and accuracy pressure
-  + priors are [0.75, 0.25]
-  + costs are relative to length
-  + alpha is inferred
-  [X] Data seems to make sense
+Kanwal (2017) BDA modeling.
 
-Accuracy: No cost difference in sending names
-  + costs are 0
-  [X] Data seems to make sense
+We represent each participant as an RSA speaker employing
+one of several strategies (see strategies.md for more description).
 
-Time: No communicative partner (remove priors, but include costs) -- everyone uses zop
-  + No communicative act so remove literal semantics (uniformDraw in all cases)
-
-Neither: No communicative partner, no cost
-  + remove literal semantics
-  + costs are 0
-
+In this BDA we infer the parameters for each strategy.
 
 ***/
 
@@ -31,8 +18,8 @@ var alphaPrior = function() {
 }
 
 // Costs
-var costTypes = ['present', 'not_present', 'reversed']
-var costsTypeDistr = Categorical({vs:costTypes, ps:[1, 1, 1]})
+var costTypes = ['present', 'not_present']
+var costsTypeDistr = Categorical({vs:costTypes, ps:[1, 1]})
 var costsTypePrior = function() {
   return sample(costsTypeDistr)
 }
@@ -49,82 +36,33 @@ var getCosts = function(costType){
         'zopekil': 0.0,
         'zopudon': 0.0
       }
-  } else if (costType == 'reversed') {
-    return {
-        'zop': 0.7,
-        'zopekil': 0.3,
-        'zopudon': 0.3
-      }
-  }
+  } 
 }
 
 // Semantics
-var semanticsTypes = ['present', 'not_present']
+var semanticsTypes = ['natural', 'none']
 var semanticsTypesDistr = Categorical({vs: semanticsTypes, ps: [1, 1]})
 var semanticsTypesPrior = function() {
   return sample(semanticsTypesDistr)
 }
 
 // Recursion
-var recursionLevels = [1, 2]
-var recursionLevelsDistr = Categorical({vs: recursionLevels, ps: [1, 1]})
+var recursionLevels = [0, 1, 2, 3]
+var recursionLevelsDistr = Categorical({vs: recursionLevels, ps: [1, 1, 1, 1]})
 var recursionLevelsPrior = function() {
   return sample(recursionLevelsDistr)
 }
 
 // need probability priors
 var needProbTypes = ['present', 'not_present', 'reversed']
-var needProbTypesDistr = Categorical({vs: needProbTypes, ps: [1, 1, 1]})
+var needProbTypesDistr = Categorical({vs: needProbTypes, ps: [1, 1, 0.1]})
 var needProbTypesPrior = function() {
   return sample(needProbTypesDistr)
 }
 
-
-//  Strategies
-var combination = {
-  "alpha": 6,
-  "costsType": "present",
-  "semanticsType": "present",
-  "recursionLevel": 2,
-  "priors": "present"
-}
-
-var accuracy = {
-  "alpha": 12,
-  "costsType": "not_present",
-  "semanticsType": "present",
-  "recursionLevel": 1,
-  "priors": "present"
-}
-
-var time = {
-  "alpha": 6,
-  "costsType": "present",
-  "semanticsType": "not_present",
-  "recursionLevel": 1,
-  "priors": "not_present"
-}
-
-var neither = {
-  "alpha": 6,
-  "costsType": "not_present",
-  "semanticsType": "not_present",
-  "recursionLevel": 2,
-  "priors": "not_present"
-}
-
-var other = {
-  "alpha": 10,
-  "costsType": "present",
-  "semanticsType": "present",
-  "recursionLevel": 2,
-  "priors": "reversed"
-}
-
 var model = function(d) {
   var _model = function() {
-    
-    
+ 
     // Infer params
     var alpha = alphaPrior()
     var costsType = costsTypePrior()
@@ -162,16 +100,26 @@ var model = function(d) {
     }
 
     var utteranceMeaning = function(u, semanticsType) {
-      if (semanticsType == "present") {
+      if (semanticsType == "natural") {
         if (u == 'zop') {
           return uniformDraw(['zopekil', 'zopudon'])
         } else {
           return u
         } 
-      } else if (semanticsType == "not_present") {
+      } else if (semanticsType == "none") {
         return uniformDraw(['zopekil', 'zopudon'])
-      } else {
-        console.log("Error bad semantics type:", semanticsType)
+      } else if (semanticsType == 'zop_tethered_frequent') {
+        if (u == 'zop') {
+            return 'zopudon'
+        } else {
+          return u
+        }
+      } else if (semanticsType == 'zop_tethered_infrequent') {
+        if (u == 'zop') {
+            return 'zopekil'
+        } else {
+          return u
+        }
       }
     }
 
@@ -223,12 +171,48 @@ var model = function(d) {
         }
       })
     })
+    
+    var L2 = cache(function(utterance) {
+      Infer({
+        model() {
+          var world = worldsPrior()
+          var meaning = litMeaning(utteranceMeaning(utterance, semanticsType), world)
+          var S = S2(world)
+          factor(S.score(utterance))
+          return world
+        }
+      })
+    })
+
+    var S3 = cache(function(world) {
+      Infer({
+        model() {
+          var utterance = utterancesPrior()
+          var L = L2(utterance)
+          factor(alpha * (L.score(world) - cost(utterance, costsType)))
+          return utterance
+        }
+      })
+    })
+    
+    var SRandom = cache(function(world) {
+      Infer({
+        model () {
+          var utterance = utterancesPrior()
+          return utterance
+        }
+      })
+    })
 
     var getModel = function(recursionLevel) {
-      if (recursionLevel == 1) {
+      if (recursionLevel == 0) {
+        return SRandom
+      } else if (recursionLevel == 1) {
         return S1
       } else if (recursionLevel == 2) {
         return S2
+      } else if (recursionLevel == 3) {
+        return S3
       }
     }
 
@@ -265,38 +249,93 @@ var model = function(d) {
   return _model
 }
 
-var opts = { method: "MCMC",
+var opts = {method: "MCMC",
             onlyMAP:true, 
             callbacks: [editor.MCMCProgress()], 
-            samples: 100, 
-            burn: 20 };
-
-// viz.table(Infer(opts,
-//                 model({'IP': '24.20.229.200',
-//                        'condition': 'combined',
-//                        'frequent': 0.55,
-//                        'infrequent': 0.1})))
+            samples: 200, 
+            burn: 50 };
 
 var experimentalData = [
-  {'IP': '100.10.40.83',
-  'condition': 'combined',
-  'frequent': 1.0,
-  'infrequent': 0.0},
- {'IP': '100.2.122.157',
-  'condition': 'combined',
-  'frequent': 0.96,
-  'infrequent': 0.0},
- {'IP': '104.174.222.43',
-  'condition': 'combined',
+  {'IP': '68.194.164.153',
+  'condition': 'accuracy',
   'frequent': 0.0,
-  'infrequent': 0.5},
+  'infrequent': 0.0},
+ {'IP': '115.99.18.32',
+  'condition': 'combined',
+  'frequent': 0.21,
+  'infrequent': 0.0},
+ {'IP': '182.65.31.144',
+  'condition': 'combined',
+  'frequent': 0.75,
+  'infrequent': 0.0},
+//  {'IP': '75.134.222.94',
+//   'condition': 'accuracy',
+//   'frequent': 0.08,
+//   'infrequent': 0.5},
  {'IP': '107.161.163.8',
   'condition': 'combined',
   'frequent': 0.08,
-  'infrequent': 0.0}]
+  'infrequent': 0.0},
+//  {'IP': '108.196.136.202',
+//   'condition': 'accuracy',
+//   'frequent': 0.12,
+//   'infrequent': 0.62},
+ {'IP': '216.21.204.80',
+  'condition': 'neither',
+  'frequent': 1.0,
+  'infrequent': 0.0},
+ {'IP': '50.153.191.59',
+  'condition': 'accuracy',
+  'frequent': 0.0,
+  'infrequent': 0.0},
+//  {'IP': '70.198.5.150',
+//   'condition': 'neither',
+//   'frequent': 0.96,
+//   'infrequent': 0.06},
+ {'IP': '50.157.182.233',
+  'condition': 'accuracy',
+  'frequent': 0.0,
+  'infrequent': 0.0},
+ {'IP': '108.210.65.252',
+  'condition': 'accuracy',
+  'frequent': 0.0,
+  'infrequent': 0.0},
+ {'IP': '71.112.135.232',
+  'condition': 'accuracy',
+  'frequent': 0.0,
+  'infrequent': 0.0},
+//  {'IP': '24.20.229.200',
+//   'condition': 'combined',
+//   'frequent': 0.96,
+//   'infrequent': 0.12},
+ {'IP': '65.28.161.177',
+  'condition': 'time',
+  'frequent': 0.98,
+  'infrequent': 1.0},
+ {'IP': '163.47.15.206',
+  'condition': 'combined',
+  'frequent': 0.21,
+  'infrequent': 0.0},
+ {'IP': '66.56.8.213',
+  'condition': 'combined',
+  'frequent': 0.62,
+  'infrequent': 0.0},
+ {'IP': '96.60.207.27',
+  'condition': 'time',
+  'frequent': 0.96,
+  'infrequent': 0.88},
+ {'IP': '67.44.209.240',
+  'condition': 'neither',
+  'frequent': 0.02,
+  'infrequent': 0.0},
+ {'IP': '68.184.74.170',
+  'condition': 'time',
+  'frequent': 0.67,
+  'infrequent': 0.62}]
 
 var res = map(function(x) {
-  console.log('IP', x['IP'])
+  console.log('Current IP:', x['IP'])
+  console.log('infrequent:', x['infrequent'])
   var currModel = model(x)
   var currPosterior = Infer(opts, currModel)
   var currAlpha = sample(marginalize(currPosterior, function(x) {
@@ -314,13 +353,15 @@ var res = map(function(x) {
   var needProbType = sample(marginalize(currPosterior, function(x) {
     return x['needProbType']
   }))
+  var cond = x['condition']
   
   return {'IP': x['IP'],
           'alpha': currAlpha,
           'costsType': currCostsType,
           'recursionLevel': recursionLevel,
           'semanticsType': semanticsType,
-          'needProbType': needProbType
+          'needProbType': needProbType,
+          'condition': cond
          }
 }, experimentalData)
 res

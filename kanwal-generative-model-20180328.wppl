@@ -1,38 +1,11 @@
 /***
-Scenarios
-=========
+Kanwal (2017) posterior predictive modeling.
 
-Combined: Costs and accuracy pressure
-  + priors are [0.75, 0.25]
-  + costs are relative to length
-  + alpha is inferred
-  [X] Data seems to make sense
-
-Accuracy: No cost difference in sending names
-  + costs are 0
-  [X] Data seems to make sense
-
-Time: No communicative partner (remove priors, but include costs) -- everyone uses zop
-  + No communicative act so remove literal semantics (uniformDraw in all cases)
-
-Neither: No communicative partner, no cost
-  + remove literal semantics
-  + costs are 0
-
+Input: inferred params for each participant
+Outpu: proportions
 
 ***/
 
-var alphas = _.range(1, 20)
-var alphaDistr = Categorical({ps:repeat(alphas.length, function() {return 1}), vs:alphas})
-// var alphaDistr = map(function(x) {x + 1}, RandomInteger({n:20}))
-var alphaPrior = function() { 
-  return sample(alphaDistr)
-}
-var costTypes = ['present', 'not_present', 'reversed']
-var costsTypeDistr = Categorical({vs:costTypes, ps:[1, 1, 1]})
-var costsTypePrior = function() {
-  return sample(costsTypeDistr)
-}
 var getCosts = function(costType){
   if (costType == 'present') {
     return {
@@ -55,26 +28,8 @@ var getCosts = function(costType){
   }
 }
 
-var experimentalData = [
-  {'IP': '100.10.40.83',
-  'condition': 'combined',
-  'frequent': 1.0,
-  'infrequent': 0.0},
- {'IP': '100.2.122.157',
-  'condition': 'combined',
-  'frequent': 0.96,
-  'infrequent': 0.0},
-//  {'IP': '104.174.222.43',
-//   'condition': 'combined',
-//   'frequent': 0.0,
-//   'infrequent': 0.5},
- {'IP': '107.161.163.8',
-  'condition': 'combined',
-  'frequent': 0.1,
-  'infrequent': 0.0}]
 
-
-//  Strategies
+//  Strategies - save these for now
 var combination = {
   "alpha": 6,
   "costsType": "present",
@@ -115,18 +70,14 @@ var other = {
   "priors": "reversed"
 }
 
-// var alpha = alphaPrior()
-// var costsType = costsTypePrior()
-// var costsType = 'not_present'
-// var alpha = 12
+var run = function(world, d) {
+  // Infer params
+  var alpha = d["alpha"]
+  var costsType = d["costsType"]
+  var semanticsType = d["semanticsType"]
+  var recursionLevel = d["recursionLevel"]
+  var needProbType = d["needProbType"]
 
-var run = function(strategyData, world) {
-  var alpha = strategyData['alpha']
-  var costsType = strategyData['costsType']
-  var semanticsType = strategyData['semanticsType']
-  var recursionLevel = strategyData['recursionLevel']
-  var priorsType  = strategyData['priors']
-  
   // Utteranecs
   var utterances = ['zop', 'zopekil', 'zopudon']
   var utterancesDistr = Categorical({vs:utterances, ps:[1, 1, 1]})
@@ -135,17 +86,16 @@ var run = function(strategyData, world) {
   }
 
   // Worlds
-  var getWorldsPriorWeights = function(priorsType) {
-    if (priorsType == 'present') {
+  var getNeedProbWeights = function(needProbType) {
+    if (needProbType == 'present') {
       return [24, 8]
-    } else if (priorsType == 'not_present') {
+    } else if (needProbType == 'not_present') {
       return [1, 1]
-    } else if (priorsType == 'reversed') {
+    } else if (needProbType == 'reversed') {
       return [8, 24]
     }
   }
-  
-  var worldsPriorWeights = getWorldsPriorWeights(priorsType)
+  var worldsPriorWeights = getNeedProbWeights(needProbType)
   var worlds = [{'d':'zopudon'}, {'d':'zopekil'}]
   var worldsDistr = Categorical({vs: worlds, ps: worldsPriorWeights})
   var worldsPrior = function() { 
@@ -158,16 +108,26 @@ var run = function(strategyData, world) {
   }
 
   var utteranceMeaning = function(u, semanticsType) {
-    if (semanticsType == "present") {
+    if (semanticsType == "natural") {
       if (u == 'zop') {
         return uniformDraw(['zopekil', 'zopudon'])
       } else {
         return u
       } 
-    } else if (semanticsType == "not_present") {
+    } else if (semanticsType == "none") {
       return uniformDraw(['zopekil', 'zopudon'])
-    } else {
-      console.log("Error bad semantics type:", semanticsType)
+    } else if (semanticsType == 'zop_tethered_frequent') {
+      if (u == 'zop') {
+        return 'zopudon'
+      } else {
+        return u
+      }
+    } else if (semanticsType == 'zop_tethered_infrequent') {
+      if (u == 'zop') {
+        return 'zopekil'
+      } else {
+        return u
+      }
     }
   }
 
@@ -219,72 +179,99 @@ var run = function(strategyData, world) {
       }
     })
   })
-  
-  var getModel = function(recursionLevel) {
-      if (recursionLevel == 1) {
-        return S1
-      } else if (recursionLevel == 2) {
-        return S2
-      }
-    }
 
-  var runSpeaker = function(n, typ) {
+  var L2 = cache(function(utterance) {
     Infer({
-      method: "MCMC", 
-      samples: 200, 
-      burn: 50,
       model() {
-        var _getProportion = function(data, target) {
-          return filter(function(x) {return x == target}, data).length / data.length
-        }
-        var world = typ == 'frequent' ? {d:'zopudon'} : {d:'zopekil'}
-        var data = repeat(n, function() {
-          return sample(S2(world))
-        })
-        var prop = _getProportion(data, 'zop')
-        return prop
+        var world = worldsPrior()
+        var meaning = litMeaning(utteranceMeaning(utterance, semanticsType), world)
+        var S = S2(world)
+        factor(S.score(utterance))
+        return world
       }
     })
+  })
+
+  var S3 = cache(function(world) {
+    Infer({
+      model() {
+        var utterance = utterancesPrior()
+        var L = L2(utterance)
+        factor(alpha * (L.score(world) - cost(utterance, costsType)))
+        return utterance
+      }
+    })
+  })
+
+  var SRandom = cache(function(world) {
+    Infer({
+      model () {
+        var utterance = utterancesPrior()
+        return utterance
+      }
+    })
+  })
+
+  var getModel = function(recursionLevel) {
+    if (recursionLevel == 0) {
+      return SRandom
+    } else if (recursionLevel == 1) {
+      return S1
+    } else if (recursionLevel == 2) {
+      return S2
+    } else if (recursionLevel == 3) {
+      return S3
+    }
   }
-  
+
   var _model = getModel(recursionLevel)
   return sample(_model(world))
 }
+  
+// var w_frequent = {d:'zopudon'}
+
+// run(w_frequent,
+//     {
+//   "IP":"100.10.40.83",
+//   "alpha":18,
+//   "costsType":"present",
+//   "recursionLevel":2,
+//   "semanticsType":"present",
+//   "needProbType":"present"})
+
 
 var data = {
   "frequent": 24,
   "infrequent": 8
 }
 
-var runExperiment = function(participantNum, data, strategyName) {
-  var strategies = {
-    'combination': combination,
-    'accuracy': accuracy,
-    'time': time,
-    'neither': neither,
-    'other': other
-  }
-  var strategy = strategies[strategyName]
+var runExperiment = function(inferredStrategy, data) {
+  // Number of trials
   var n_frequent = data['frequent']
   var n_infrequent = data['infrequent']
   var trials_frequent =  _.range(n_frequent)
   var trials_infrequent =  _.range(n_infrequent)
+  // Worlds
   var w_frequent = {d:'zopudon'}
   var w_infrequent = {d:'zopekil'}
+  
+  // Run frequent trials
   var d_frequent = map(function(x) {
-    var utterance = run(strategy, w_frequent)
+    var utterance = run(w_frequent, inferredStrategy)
     return {
-      "participantNum": participantNum,
-      "condition": strategyName,
+      "IP": inferredStrategy["IP"],
+      "condition": inferredStrategy["condition"],
       "trialType": "frequent",
       "trialNum": x,
       "utterance": utterance
     }}, trials_frequent)
+
+  // Run infrequent trials
   var d_infrequent = map(function(x) {
-    var utterance = run(strategy, w_infrequent)
+    var utterance = run(w_infrequent, inferredStrategy)
     return {
-      "participantNum": participantNum,
-      "condition": strategyName,
+      "IP": inferredStrategy["IP"],
+      "condition": inferredStrategy["condition"],
       "trialType": "infrequent",
       "trialNum": x,
       "utterance": utterance
@@ -293,12 +280,12 @@ var runExperiment = function(participantNum, data, strategyName) {
   return allData
 }
 
-
+var experimentalData = [{"IP":"68.194.164.153","alpha":18,"costsType":"not_present","recursionLevel":3,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"115.99.18.32","alpha":5,"costsType":"not_present","recursionLevel":1,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"182.65.31.144","alpha":3,"costsType":"present","recursionLevel":2,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"107.161.163.8","alpha":11,"costsType":"not_present","recursionLevel":1,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"216.21.204.80","alpha":19,"costsType":"present","recursionLevel":3,"semanticsType":"natural","needProbType":"present","condition":"neither"},{"IP":"50.153.191.59","alpha":15,"costsType":"not_present","recursionLevel":3,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"50.157.182.233","alpha":17,"costsType":"not_present","recursionLevel":3,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"108.210.65.252","alpha":13,"costsType":"not_present","recursionLevel":2,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"71.112.135.232","alpha":16,"costsType":"not_present","recursionLevel":2,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"65.28.161.177","alpha":14,"costsType":"present","recursionLevel":2,"semanticsType":"none","needProbType":"not_present","condition":"time"},{"IP":"163.47.15.206","alpha":6,"costsType":"not_present","recursionLevel":1,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"66.56.8.213","alpha":5,"costsType":"present","recursionLevel":1,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"96.60.207.27","alpha":7,"costsType":"present","recursionLevel":2,"semanticsType":"none","needProbType":"present","condition":"time"},{"IP":"67.44.209.240","alpha":15,"costsType":"present","recursionLevel":1,"semanticsType":"natural","needProbType":"not_present","condition":"neither"},{"IP":"68.184.74.170","alpha":3,"costsType":"present","recursionLevel":1,"semanticsType":"none","needProbType":"present","condition":"time"}]
 var n_participants = 30
 var runExperiments = function(n_participants, data, strategyName) {
-  return map(function(participant) {
-    runExperiment(participant, data, strategyName)
-  }, _.range(n_participants))
+  return map(function(x) {
+    runExperiment(x, data)
+  }, experimentalData)
 }
 
 var flatten = function(arr) {
