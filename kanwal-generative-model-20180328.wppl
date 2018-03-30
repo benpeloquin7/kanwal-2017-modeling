@@ -19,7 +19,7 @@ var getCosts = function(costType){
         'zopekil': 0.0,
         'zopudon': 0.0
       }
-  } else if (costType == 'reversed') {
+  } else if (costType == 'reverse') {
     return {
         'zop': 0.7,
         'zopekil': 0.3,
@@ -91,7 +91,7 @@ var run = function(world, d) {
       return [24, 8]
     } else if (needProbType == 'not_present') {
       return [1, 1]
-    } else if (needProbType == 'reversed') {
+    } else if (needProbType == 'reverse') {
       return [8, 24]
     }
   }
@@ -180,65 +180,17 @@ var run = function(world, d) {
     })
   })
 
-  var L2 = cache(function(utterance) {
-    Infer({
-      model() {
-        var world = worldsPrior()
-        var meaning = litMeaning(utteranceMeaning(utterance, semanticsType), world)
-        var S = S2(world)
-        factor(S.score(utterance))
-        return world
-      }
-    })
-  })
-
-  var S3 = cache(function(world) {
-    Infer({
-      model() {
-        var utterance = utterancesPrior()
-        var L = L2(utterance)
-        factor(alpha * (L.score(world) - cost(utterance, costsType)))
-        return utterance
-      }
-    })
-  })
-
-  var SRandom = cache(function(world) {
-    Infer({
-      model () {
-        var utterance = utterancesPrior()
-        return utterance
-      }
-    })
-  })
-
   var getModel = function(recursionLevel) {
-    if (recursionLevel == 0) {
-      return SRandom
-    } else if (recursionLevel == 1) {
+    if (recursionLevel == 1) {
       return S1
     } else if (recursionLevel == 2) {
       return S2
-    } else if (recursionLevel == 3) {
-      return S3
     }
   }
 
   var _model = getModel(recursionLevel)
   return sample(_model(world))
 }
-  
-// var w_frequent = {d:'zopudon'}
-
-// run(w_frequent,
-//     {
-//   "IP":"100.10.40.83",
-//   "alpha":18,
-//   "costsType":"present",
-//   "recursionLevel":2,
-//   "semanticsType":"present",
-//   "needProbType":"present"})
-
 
 var data = {
   "frequent": 24,
@@ -280,7 +232,16 @@ var runExperiment = function(inferredStrategy, data) {
   return allData
 }
 
-var experimentalData = [{"IP":"68.194.164.153","alpha":18,"costsType":"not_present","recursionLevel":3,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"115.99.18.32","alpha":5,"costsType":"not_present","recursionLevel":1,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"182.65.31.144","alpha":3,"costsType":"present","recursionLevel":2,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"107.161.163.8","alpha":11,"costsType":"not_present","recursionLevel":1,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"216.21.204.80","alpha":19,"costsType":"present","recursionLevel":3,"semanticsType":"natural","needProbType":"present","condition":"neither"},{"IP":"50.153.191.59","alpha":15,"costsType":"not_present","recursionLevel":3,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"50.157.182.233","alpha":17,"costsType":"not_present","recursionLevel":3,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"108.210.65.252","alpha":13,"costsType":"not_present","recursionLevel":2,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"71.112.135.232","alpha":16,"costsType":"not_present","recursionLevel":2,"semanticsType":"natural","needProbType":"not_present","condition":"accuracy"},{"IP":"65.28.161.177","alpha":14,"costsType":"present","recursionLevel":2,"semanticsType":"none","needProbType":"not_present","condition":"time"},{"IP":"163.47.15.206","alpha":6,"costsType":"not_present","recursionLevel":1,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"66.56.8.213","alpha":5,"costsType":"present","recursionLevel":1,"semanticsType":"natural","needProbType":"present","condition":"combined"},{"IP":"96.60.207.27","alpha":7,"costsType":"present","recursionLevel":2,"semanticsType":"none","needProbType":"present","condition":"time"},{"IP":"67.44.209.240","alpha":15,"costsType":"present","recursionLevel":1,"semanticsType":"natural","needProbType":"not_present","condition":"neither"},{"IP":"68.184.74.170","alpha":3,"costsType":"present","recursionLevel":1,"semanticsType":"none","needProbType":"present","condition":"time"}]
+var experimentalData = [
+  {
+    "IP":"104.11.62.66",
+    "alpha":14.861040493010448,
+    "costsType":"reverse",
+    "semanticsType":"natural",
+    "recursionLevel":1,
+    "needProbType":"present",
+    "condition":"accuracy"},
+  {"IP":"104.175.214.163","alpha":12.934067730430655,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"present","condition":"accuracy"},{"IP":"104.57.161.213","alpha":15.893416698682122,"costsType":"present","semanticsType":"none","recursionLevel":1,"needProbType":"not_present","condition":"time"},{"IP":"107.13.61.217","alpha":10.559861983840857,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"accuracy"},{"IP":"107.161.163.8","alpha":4.543762370983061,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"combined"},{"IP":"107.2.1.30","alpha":13.527506979447574,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"present","condition":"accuracy"},{"IP":"108.210.65.252","alpha":10.438908692812873,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"108.23.68.36","alpha":5.678864569267525,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"115.241.81.138","alpha":10.137528317451283,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"115.242.129.102","alpha":10.500872795108132,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"accuracy"},{"IP":"115.98.55.114","alpha":10.432627755599734,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"115.99.18.32","alpha":2.1308823414551092,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"present","condition":"combined"},{"IP":"117.213.33.129","alpha":12.580810064796614,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"combined"},{"IP":"122.161.26.31","alpha":1.5899200856634779,"costsType":"present","semanticsType":"none","recursionLevel":2,"needProbType":"not_present","condition":"combined"},{"IP":"142.196.192.44","alpha":14.667779414438067,"costsType":"reverse","semanticsType":"none","recursionLevel":2,"needProbType":"present","condition":"accuracy"},{"IP":"163.47.15.206","alpha":2.618560795906507,"costsType":"not_present","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"combined"},{"IP":"173.68.90.30","alpha":15.155302710181774,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"173.78.132.154","alpha":15.397259352230911,"costsType":"present","semanticsType":"none","recursionLevel":1,"needProbType":"present","condition":"time"},{"IP":"174.140.64.232","alpha":10.051590548151466,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"174.55.10.72","alpha":15.935712550867219,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"182.65.31.144","alpha":15.489159446218167,"costsType":"present","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"combined"},{"IP":"183.82.201.213","alpha":7.2403004831701825,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"present","condition":"accuracy"},{"IP":"190.40.243.234","alpha":13.189867204609858,"costsType":"present","semanticsType":"none","recursionLevel":1,"needProbType":"not_present","condition":"time"},{"IP":"197.164.51.196","alpha":1.7295658404286576,"costsType":"reverse","semanticsType":"none","recursionLevel":2,"needProbType":"present","condition":"accuracy"},{"IP":"199.66.168.75","alpha":8.092531619514366,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"200.106.22.194","alpha":10.954609750641481,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"present","condition":"accuracy"},{"IP":"209.242.152.162","alpha":6.160824910094551,"costsType":"not_present","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"216.26.183.5","alpha":4.562055555733046,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"24.167.83.155","alpha":11.250683165909669,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"combined"},{"IP":"24.191.98.160","alpha":13.116641175648617,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"24.56.254.22","alpha":11.530897858606,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"accuracy"},{"IP":"38.88.53.50","alpha":15.901376442929793,"costsType":"reverse","semanticsType":"none","recursionLevel":2,"needProbType":"present","condition":"combined"},{"IP":"50.153.191.59","alpha":10.330236934009465,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"50.155.75.81","alpha":6.150060775147741,"costsType":"present","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"50.157.182.233","alpha":10.438163249177242,"costsType":"not_present","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"accuracy"},{"IP":"59.98.251.98","alpha":6.9818275413904685,"costsType":"present","semanticsType":"natural","recursionLevel":2,"needProbType":"present","condition":"combined"},{"IP":"65.28.161.177","alpha":10.29639716638517,"costsType":"present","semanticsType":"none","recursionLevel":2,"needProbType":"not_present","condition":"time"},{"IP":"67.168.183.190","alpha":6.313265441971516,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"time"},{"IP":"67.187.0.173","alpha":15.38660976785073,"costsType":"present","semanticsType":"none","recursionLevel":2,"needProbType":"present","condition":"time"},{"IP":"68.114.220.220","alpha":13.019892436719486,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"combined"},{"IP":"68.184.74.170","alpha":6.097303473692231,"costsType":"present","semanticsType":"none","recursionLevel":2,"needProbType":"present","condition":"time"},{"IP":"68.194.164.153","alpha":9.815241007954045,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"accuracy"},{"IP":"68.204.111.135","alpha":13.072119545690438,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"69.136.182.208","alpha":13.565954187176096,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"69.66.162.73","alpha":13.972001853955256,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"71.112.135.232","alpha":13.701866457091194,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"accuracy"},{"IP":"71.196.89.171","alpha":8.476752707005014,"costsType":"not_present","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"time"},{"IP":"71.56.37.206","alpha":10.658552147043437,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"71.71.193.230","alpha":4.203089707167031,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"present","condition":"accuracy"},{"IP":"71.90.149.208","alpha":13.268953465931773,"costsType":"present","semanticsType":"none","recursionLevel":1,"needProbType":"not_present","condition":"time"},{"IP":"72.135.113.249","alpha":6.390858305869743,"costsType":"present","semanticsType":"none","recursionLevel":1,"needProbType":"present","condition":"time"},{"IP":"72.182.90.103","alpha":7.2370130801600645,"costsType":"present","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"combined"},{"IP":"72.9.28.126","alpha":13.755046618011916,"costsType":"reverse","semanticsType":"none","recursionLevel":1,"needProbType":"not_present","condition":"combined"},{"IP":"73.173.175.17","alpha":11.2480948729864,"costsType":"not_present","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"accuracy"},{"IP":"73.42.71.240","alpha":12.064233748243813,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"73.51.84.163","alpha":14.988384940186943,"costsType":"not_present","semanticsType":"natural","recursionLevel":2,"needProbType":"not_present","condition":"accuracy"},{"IP":"74.136.96.163","alpha":15.179150713433923,"costsType":"present","semanticsType":"none","recursionLevel":2,"needProbType":"not_present","condition":"time"},{"IP":"74.74.166.82","alpha":8.765796506074645,"costsType":"not_present","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"combined"},{"IP":"75.134.222.94","alpha":2.2532458080466675,"costsType":"not_present","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"accuracy"},{"IP":"75.168.190.50","alpha":15.339333678693366,"costsType":"present","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"time"},{"IP":"75.5.249.84","alpha":14.71165382328084,"costsType":"present","semanticsType":"none","recursionLevel":1,"needProbType":"present","condition":"time"},{"IP":"76.107.196.14","alpha":9.692191982614144,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"79.126.171.64","alpha":15.275816784797675,"costsType":"present","semanticsType":"none","recursionLevel":2,"needProbType":"not_present","condition":"time"},{"IP":"80.101.212.2","alpha":2.397911771200822,"costsType":"reverse","semanticsType":"natural","recursionLevel":2,"needProbType":"present","condition":"accuracy"},{"IP":"98.234.65.43","alpha":14.796497265646352,"costsType":"present","semanticsType":"none","recursionLevel":1,"needProbType":"present","condition":"time"},{"IP":"98.251.96.30","alpha":4.51663854825545,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"present","condition":"accuracy"},{"IP":"99.195.31.91","alpha":13.19735733910914,"costsType":"reverse","semanticsType":"natural","recursionLevel":1,"needProbType":"not_present","condition":"combined"}]
 var n_participants = 30
 var runExperiments = function(n_participants, data, strategyName) {
   return map(function(x) {
@@ -291,5 +252,5 @@ var runExperiments = function(n_participants, data, strategyName) {
 var flatten = function(arr) {
   return [].concat.apply([], arr)
 }
-var res = runExperiments(n_participants, data, 'other')
+var res = runExperiments(n_participants, data)
 flatten(res)
