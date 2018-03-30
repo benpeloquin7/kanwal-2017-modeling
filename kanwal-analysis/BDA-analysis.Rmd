@@ -1,0 +1,156 @@
+---
+title: "Kanwal (2017) BDA Notebook"
+author: "Ben"
+date: "3/30/2018"
+output: html_document
+---
+
+```{r packages, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(rwebppl)
+library(tidyr)
+```
+
+```{r echo=FALSE}
+# getModelFile()
+# ==============
+# Return a model string from a .wppl file
+#
+# Parameters
+# ----------
+# modelFile: str
+#  File path str
+# 
+# Returns
+# -------
+# str
+#    Model str.
+#
+getModelFile <- function(modelFile) {
+  readChar(modelFile, file.info(modelFile)$size)
+}
+```
+
+## BDA data
+```{r generative-model}
+fPath <- "../kanwal-generative-model-20180328.wppl"
+m <- getModelFile(fPath)
+```
+
+Get posterior predictives...
+```{r run-webppl}
+dfSynthetic <- rwebppl::webppl(m)
+```
+
+## Empirical Kanwal (2017) data
+```{r get-empirical-data}
+fEmpiricalPath <- "../kanwal-preprocessed.csv" 
+dfEmpirical <- read.csv(fEmpiricalPath)
+```
+
+```{r prepocessing-synthetic-data-names}
+# Minor preprocessing
+dfSynthetic <- dfSynthetic %>%
+  rename(display_type=trialType) %>%
+  mutate(label_type=ifelse(utterance=='zop', 'short', 'long'))
+```
+
+## Preprocessing
+```{r prepocessing-synthetic-data-counts}
+dfSyntheticCnts <-  dfSynthetic %>%
+  group_by(IP, condition, display_type, label_type) %>%
+  summarise(cnt=n())
+```
+
+Fill missing vals synthetic data (note I've alread carried this out in `analysis.ipynb` for empirical data)
+```{r prepocessing-synthetic-data-fill-missing-vals}
+display_types <- c('frequent', 'infrequent')
+label_types <- c('short', 'long')
+
+# New data frame for merging missing counts
+dfPlaceholder <- data.frame(expand.grid(IP=unique(dfSynthetic$IP),
+                                        condition=unique(dfSynthetic$condition),
+                                        display_type=display_types,
+                                        label_type=label_types)) %>%
+  mutate(
+    IP=as.character(IP),
+    condition=as.character(condition),
+    display_type=as.character(display_type),
+    label_type=as.character(label_type),
+    cnt=as.integer(0))
+
+# First combine and take counts
+dfJoin1 <- full_join(dfSyntheticCnts, dfPlaceholder, by=c('IP', 'condition', 'display_type', 'label_type', 'cnt')) %>%
+  arrange(IP, condition, display_type) %>%
+  group_by(IP, condition, display_type, label_type) %>%
+  summarise(cnt=sum(cnt))
+
+# We want to filter based on whether the group (IP, condition) ash *any* counts, so get these IDs
+dfJoin2 <- full_join(dfSyntheticCnts, dfPlaceholder, by=c('IP', 'condition', 'display_type', 'label_type', 'cnt')) %>%
+  arrange(IP, condition, display_type) %>%
+  group_by(IP, condition, display_type, label_type) %>%
+  summarise(cnt=sum(cnt)) %>%
+  group_by(IP, condition) %>%
+  summarise(groupTotal=sum(cnt))
+
+dfSyntheticFinal <- full_join(dfJoin1, dfJoin2, by=c('IP', 'condition')) %>%
+  filter(groupTotal == 32) %>%
+  mutate(condition_total=ifelse(display_type=='frequent', 24, 8)) %>%
+  group_by(IP, condition, display_type) %>%
+  mutate(prop=cnt/condition_total) %>%
+  select(IP, condition, display_type, label_type, prop) %>%
+  filter(label_type=='short')
+  # spread(display_type, prop)
+```
+
+Join empirical data and synthetic data
+```{r preprocessing-join-empirical-synthetic-data}
+dfSyntheticFinal <- dfSyntheticFinal %>%
+  select(IP, condition, display_type, prop)
+
+dfEmpiricalProcessed <- dfEmpirical %>%
+  mutate(IP=as.character(IP),
+         condition=as.character(condition)) %>%
+  gather(display_type, prop, c(frequent, infrequent)) %>%
+  select(IP, condition, display_type, prop)
+
+dfEmpSynth <- left_join(dfSyntheticFinal, dfEmpiricalProcessed, by=c("IP", "condition", "display_type")) %>%
+  gather(data_type, prop, c(prop.y, prop.x)) %>%
+  select(IP, condition, display_type, data_type, prop) %>%
+  mutate(data_type=ifelse(data_type=='prop.x', 'synthetic', 'empirical'))
+```
+
+### Evaluation
+
+How do model predictions look compared to empirical data?
+```{r plot-synthetic-vs-empirical}
+dfEmpSynth %>%
+  spread(display_type, prop) %>%
+  ggplot(aes(x=frequent, y=infrequent, col=data_type, group=IP)) +
+    geom_point(alpha=0.7, size=2) +
+    geom_line(alpha=0.7, col='grey', lty=2) +
+    theme_few() +
+    facet_grid(~condition)
+```
+
+Correlation
+```{r correlation-synthetic-vs-empirical}
+dfEmpSynthCor <- dfEmpSynth  %>%
+  spread(data_type, prop)
+
+paste("R^2:", round(cor(dfEmpSynthCor$empirical, dfEmpSynthCor$synthetic)^2, 3))
+```
+
+```{r plot-correlation}
+dfEmpSynth %>%
+  spread(data_type, prop) %>%
+  ggplot(aes(x=synthetic, y=empirical)) +
+    geom_jitter(aes(col=condition), alpha=0.5, width=0.01, height=0.01, size=2) +
+    geom_smooth(method='lm') +
+    ggtitle("Model vs Empirical predictions Kanwal (2017)") +
+    theme_few() +
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
