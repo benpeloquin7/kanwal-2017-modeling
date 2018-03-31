@@ -33,7 +33,50 @@ getModelFile <- function(modelFile) {
 }
 ```
 
-## BDA data
+# BDA - Modeling participant data
+
+Note: this analysis includes 85% of participants as I'm having trouble modeling what appears to be fairly random behaviors... See `analysis.ipynb` for more information.
+```{r getModelableData}
+# Hueristic modelable data
+f_modelable_data <- "../modelable-data-20180330.csv"
+dfModelable <- read.csv(f_modelable_data)
+
+# All data
+f_all_data <- "../kanwal-preprocessed.csv"
+dfAll <- read.csv(f_all_data) %>%
+  mutate(frequent=round(frequent, 2),
+         infrequent=round(infrequent, 2))
+```
+
+```{r setup-bda-model}
+f_bda_model <- "../kanwal-BDA-20180330.wppl"
+model_bda <- getModelFile(f_bda_model)
+bda_data <- head(dfModelable)
+nrow(dfModelable)
+
+x1 <- '115.98.55.114'
+x2 <- '117.217.210.9'
+# but worked on second time
+dfAll2 <- dfAll %>% filter(IP != x2,
+                           condition !='neither')
+```
+
+Note: slow running.
+```{r run-bda-model}
+# pt <- proc.time()
+# df_bda <- rwebppl::webppl(model_bda, data=dfModelable, data_var='rData')
+# et <- proc.time() - pt
+# write.csv(df_bda, "bda-tuned-params-20180303.csv")
+```
+
+```{r optional-read-cached-data}
+# If we haven't re-run the BDA predictives then load cached version.
+if (!exists('df_bda')) {
+  df_bda <- read.csv("bda-tuned-params-20180303.csv")
+}
+```
+
+## BDA predictive
 ```{r generative-model}
 fPath <- "../kanwal-generative-model-20180328.wppl"
 m <- getModelFile(fPath)
@@ -41,7 +84,7 @@ m <- getModelFile(fPath)
 
 Get posterior predictives...
 ```{r run-webppl}
-dfSynthetic <- rwebppl::webppl(m)
+dfSynthetic <- rwebppl::webppl(m, data=df_bda, data_var='rData')
 ```
 
 ## Empirical Kanwal (2017) data
@@ -128,8 +171,8 @@ How do model predictions look compared to empirical data?
 ```{r plot-synthetic-vs-empirical}
 dfEmpSynth %>%
   spread(display_type, prop) %>%
-  ggplot(aes(x=frequent, y=infrequent, col=data_type, group=IP)) +
-    geom_point(alpha=0.7, size=2) +
+  ggplot(aes(x=frequent, y=infrequent, col=condition, group=IP)) +
+    geom_point(aes(shape=data_type), alpha=0.5, size=2.5) +
     geom_line(alpha=0.7, col='grey', lty=2) +
     theme_few() +
     facet_grid(~condition)
@@ -145,6 +188,27 @@ paste("R^2:", round(cor(dfEmpSynthCor$empirical, dfEmpSynthCor$synthetic)^2, 3))
 
 ```{r plot-correlation}
 dfEmpSynth %>%
+  spread(data_type, prop) %>%
+  ggplot(aes(x=synthetic, y=empirical)) +
+    geom_jitter(aes(col=condition), alpha=0.5, width=0.01, height=0.01, size=2) +
+    geom_smooth(method='lm') +
+    ggtitle("Model vs Empirical predictions Kanwal (2017)") +
+    theme_few() +
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Restricting analysis to rational scenarios...
+```{r correlation-synthetic-vs-empirical-conditions}
+dfEmpSynthCor <- dfEmpSynth  %>%
+  filter(condition != 'neither') %>%
+  spread(data_type, prop)
+
+paste("R^2:", round(cor(dfEmpSynthCor$empirical, dfEmpSynthCor$synthetic)^2, 3))
+```
+
+```{r plot-correlation-conditions}
+dfEmpSynth %>%
+  filter(condition != 'neither') %>%
   spread(data_type, prop) %>%
   ggplot(aes(x=synthetic, y=empirical)) +
     geom_jitter(aes(col=condition), alpha=0.5, width=0.01, height=0.01, size=2) +
