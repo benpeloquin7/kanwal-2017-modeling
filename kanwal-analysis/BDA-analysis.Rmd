@@ -54,17 +54,24 @@ model_bda <- getModelFile(f_bda_model)
 bda_data <- head(dfModelable)
 nrow(dfModelable)
 
-x1 <- '115.98.55.114'
-x2 <- '117.217.210.9'
+problemIPs <- c('70.198.5.150', 
+                '117.217.210.9', 
+                '65.183.140.246', 
+                '24.253.233.194', 
+                '24.20.229.200', 
+                '108.196.136.202',
+                '122.161.26.31')
+# 24.74.13.244 only after 10000 attempts
+# 50.153.162.232
+# 
 # but worked on second time
-dfAll2 <- dfAll %>% filter(IP != x2,
-                           condition !='neither')
+dfAll2 <- dfAll %>% filter(!(IP %in% problemIPs))
 ```
 
 Note: slow running.
 ```{r run-bda-model}
 # pt <- proc.time()
-# df_bda <- rwebppl::webppl(model_bda, data=dfModelable, data_var='rData')
+# df_bda <- rwebppl::webppl(model_bda, data=dfAll2, data_var='rData')
 # et <- proc.time() - pt
 # write.csv(df_bda, "bda-tuned-params-20180303.csv")
 ```
@@ -217,4 +224,61 @@ dfEmpSynth %>%
     theme_few() +
     theme(plot.title = element_text(hjust = 0.5))
 ```
+
+
+### Baseline comparison  - naive model
+
+The naive model employs the optimal strategy for communication in each of the three conditions.
+* `combined`: always use `short` form for frequent object, always use `long` form for infrequent object
+* `accuracy`: always use `long` form
+* `time`: always use `short` form
+```{r}
+dfEmpSynthAdd <- dfEmpSynth %>%
+  filter(data_type=='empirical') %>%
+  mutate(baseline=ifelse((condition=='combined' & display_type=='frequent') | 
+                               (condition=='accuracy' & display_type=='infrequent') |
+                               (condition=='time'), 1.0, 0.0)) %>%
+  select(IP, condition, display_type, baseline) %>%
+  rename(prop=baseline) %>%
+  mutate(data_type='baseline')
+
+dfEmpSynthBaseline <- rbind(dfEmpSynth, dfEmpSynthAdd)
+```
+
+```{r plot-model-comparison-data}
+dfEmpSynthBaseline %>%
+  filter(condition != 'neither') %>%
+  spread(display_type, prop) %>%
+  ggplot() +
+    geom_jitter(aes(x=frequent, y=infrequent, col=condition), alpha=0.5, width=0.01, height=0.01, size=2) +
+    ggtitle("Model vs Empirical predictions Kanwal (2017)") +
+    theme_few() +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    facet_grid(~data_type)
+```
+
+```{r plot-model-comparison-corr}
+dfEmpSynthBaseline %>%
+  filter(condition != 'neither') %>%
+  spread(data_type, prop) %>%
+  gather(model, prop, c(baseline, synthetic)) %>%
+  ggplot(aes(x=prop, y=empirical)) +
+    geom_point(alpha=0.5, size=2) +
+    geom_smooth(method='lm') +
+    ggtitle("Model vs Empirical predictions Kanwal (2017)") +
+    theme_few() +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    facet_grid(~model)
+```
+
+```{r correlation-baseline}
+dfBaselineCor <- dfEmpSynthBaseline %>%
+  filter(condition != 'neither') %>%
+  spread(data_type, prop)
+
+cor(dfBaselineCor$baseline,
+    dfBaselineCor$empirical)^2
+
+```
+
 
