@@ -23,7 +23,7 @@ var costsTypePrior = function() {
 var getCosts = function(costType){
   if (costType == 'present') {
     return {
-        'zop': 0.3,
+        'zop': 0.3, 
         'zopekil': 0.7,
         'zopudon': 0.7
       }
