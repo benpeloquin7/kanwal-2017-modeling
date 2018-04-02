@@ -5,7 +5,28 @@ date: "3/30/2018"
 output: html_document
 ---
 
-```{r packages, message=FALSE, warning=FALSE}
+[Kanwal (2017)](https://www.ncbi.nlm.nih.gov/pubmed/28494263) present a test of Zipf's `Law of Abbreviation` -- that a universal design feature of human language emerges as a result of individuals optimising form-meaning mappings under competing pressures to communicate accurately (`expressivity`), but also efficiently (roughly, `learnabilty`). Their study uses miniature artificial language learning paradigm. They show that language users optimise form-mean mapping only when pressures for accuracy and effficency *both* operate during the communicative task.
+
+In this analysis we explore the degree to which the observed behavior can be explained by more general purpose social reasoning mechanisms using a computational pragmatics model. We show that our model accounts for a large portion of the variance ($r^2=0.97$) across multiple conditions (both optimal and sub-optimal behavior).
+
+While one interpretation of this finding frames the results as entirely pragmatics-driven. Instead we argue that the Zipfian result is a bi-product of pragmatic mechanims. 
+
+Summary of paper:
+
+Four conditions:
+
+  * `combination`: both communicative (expressivity) and production cost (efficiency) pressures.
+  
+  * `accuracy`: only communicative pressure (no production cost).
+  
+  * `timing`: no communicative pressures (only production costs).
+  
+  * `neither`: not communicative pressures or productino cost. Note this scenario is not very interesting to us as it does not resemble any aspects of communication.
+  
+  ![Kanwal (2017), fig3](img/kanwal-2017-fig3.png)
+
+
+```{r packages, message=FALSE, warning=FALSE, echo=FALSE}
 library(dplyr)
 library(ggplot2)
 library(ggthemes)
@@ -33,7 +54,39 @@ getModelFile <- function(modelFile) {
 }
 ```
 
-# BDA - Modeling participant data
+# BDA - Modeling Zipf's Law of Abbreviation via Kanwal (2017)
+
+Here we model participant behavior as pragmatic reasoning instantiated in the Rational speech-act family of models. We infer four hyperparmeters which encode different participant strategies (optimal in different conditions).
+
+### BDA generative model
+
+* `semantics`: $Unif(["natural", "none"])$ where
+    * $natural: [[zop]] \in \{zopekil, zopudon\}, [[zopudon]] \in \{zopudon\}, [[zop]] \in \{zopekil\} \in \{zopekil\}$
+    * $none: [[x]] \in \{zopekil, zopudon\}$
+    
+* `costs`: $Unif(["present", "not-present", "reversed"])$ where
+    * $present: "zop":0.3, "zopudon":0.7, "zopekil":0.7$
+    * $present: cost(zop) = cost(zopekil) = cost(zopudon) = 0$
+    * $reversed: "zop":0.7, "zopudon":0.3, "zopekil":0.3$
+    
+* `recursion-level`: $Categorical([1, 2])$
+
+* `needProbabilities`: $Categorical([present, not present, reversed])$
+    * `present`: "zopudon":24,"zopekil":8,  
+    * `not-present`: "zopudon":1,"zopekil":1,
+    * `reversed`: "zopudon":8,"zopekil":24,
+
+### Strategy mapping to hyperparams
+
+Three conditions of interest:
+
+  * `combination`:  `semantics`='natural', `costs`='present', `needProbabilities`='present'
+  
+  * `accuracy`:  `semantics`='natural', `costs`='not-present'
+  
+  * `timing`:  `semantics`='not-present', `costs`='present'
+  
+## Analysis
 
 Note: this analysis includes 85% of participants as I'm having trouble modeling what appears to be fairly random behaviors... See `analysis.ipynb` for more information.
 ```{r getModelableData}
