@@ -10,8 +10,11 @@ In this BDA we infer the parameters for each strategy.
 ***/
 
 var alphaDistr = Uniform({a:1, b:16})
+var alphas = [1, 2, 3, 4, 5, 6, 7, 8 ,9, 10]
+var alphaDistr = uniformDraw([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
 var alphaPrior = function() {
-  return sample(alphaDistr)
+  return uniformDraw(alphas)
+  // return sample(alphaDistr)
 }
 
 // Costs
@@ -225,6 +228,7 @@ var res = map(function(x) {
   console.log('Current IP:', x['IP'])
   var currModel = model(x)
   var currPosterior = Infer(opts, currModel)
+  console.log("Inference complete...")
   var currAlpha = sample(marginalize(currPosterior, function(x) {
     return x['alpha']
   }))
@@ -241,15 +245,19 @@ var res = map(function(x) {
     return x['needProbType']
   }))
   var cond = x['condition']
+
+  var result = {
+    'IP': x['IP'],
+    'alpha': currAlpha,
+    'costsType': currCostsType,
+    'semanticsType': semanticsType,
+    'recursionLevel': recursionLevel,
+    'needProbType': needProbType,
+    'condition': cond
+  }
   
-  return {'IP': x['IP'],
-          'alpha': currAlpha,
-          'costsType': currCostsType,
-          'semanticsType': semanticsType,
-          'recursionLevel': recursionLevel,
-          'needProbType': needProbType,
-          'condition': cond
-         }
+  console.log(result)
+  return result
 }, rData)
 
 res
