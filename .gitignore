@@ -1,6 +1,7 @@
 # Misc filetypes/directories
 *.json
 *.pdf
+*.png
 *.csv
 *.Rproj.user
 *.Rhistory
@@ -8,3 +9,4 @@
 
 # Jupter notebooks
 *.ipynb_checkpoints/
+.Rproj.user
