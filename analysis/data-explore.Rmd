@@ -1,0 +1,79 @@
+---
+title: "data-explore"
+author: "Ben"
+date: "6/16/2018"
+output: html_document
+---
+
+```{r libs}
+library(ggthemes)
+library(tidyverse)
+```
+
+```{r options}
+options(stringsAsFactors = FALSE)
+```
+
+
+```{r data}
+df <- read.csv("../data/df_agg.csv")
+```
+
+```{r add-match-label}
+df <- df %>%
+  mutate(match=label_type_num==display_type_num)
+```
+
+```{r get-conditions}
+conditions <- unique(df$condition)
+```
+
+
+```{r plotting-helpers}
+plot_IP_behavior_match <- function(cond, df, save_file=TRUE) {
+  test_img <- df %>%
+    filter(condition == cond) %>%
+    ggplot(aes(x=as.factor(trial), y=match, col=display_type, group=1)) +
+      geom_point(aes(shape=label_type), size=3) +
+      geom_line() +
+      theme_few() +
+      facet_wrap(~IP, ncol=5) +
+      ggtitle(paste("Condition:", cond)) +
+      theme(text = element_text(size=12),
+            axis.text.x = element_text(angle=90, hjust=1, size=6),
+            plot.title = element_text(hjust = 0.5))
+  if (save_file) ggsave(paste0("img/test-img-", cond, "-20180616.png"), test_img, width=30, height=30)
+}
+
+plot_IP_behavior_label_type <- function(cond, df, save_file=TRUE) {
+  test_img <- df %>%
+    filter(condition == cond) %>%
+    ggplot(aes(x=as.factor(trial), y=label_type, col=display_type, group=1)) +
+      geom_point(size=3, alpha=0.5) +
+      geom_line() +
+      theme_few() +
+      facet_wrap(~IP+condition, ncol=5) +
+      ggtitle(paste("Condition:", cond)) +
+      theme(text = element_text(size=24),
+            axis.text.x = element_text(angle=90, hjust=1, size=6),
+            plot.title = element_text(hjust = 0.5))
+  if (save_file) ggsave(paste0("img/label-type-", cond, "-20180616.png"), test_img, width=30, height=30)
+}
+```
+
+```{r plots}
+for (i in 1:length(conditions)) {
+  cond <- conditions[i]
+  cat(paste("\nCondition:", cond))
+  plot_IP_behavior_match(cond, df)
+  plot_IP_behavior_label_type(cond, df)
+}
+```
+
+```{r bad-ips}
+plot_IP_behavior_label_type("accuracy", df)
+```
+
+
+
+
