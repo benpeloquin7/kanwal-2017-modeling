@@ -6,7 +6,14 @@
 *.Rproj.user
 *.Rhistory
 *.DS_Store
+*.pyc
 
 # Jupter notebooks
 *.ipynb_checkpoints/
+.idea/
+
+# R
 .Rproj.user
+*.Rhistory
+
+
