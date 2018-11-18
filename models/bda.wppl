@@ -1,22 +1,22 @@
 var utterances = ['zop', 'zopudon', 'zopekil']
 var meanings = ['zopudon', 'zopekil']
 
-var S0 = cache(function(m, params) {
+var S0 = function(m, params) {
   Infer({method: 'enumerate'}, function() {
     var u = categorical({vs: utterances, ps: params['pUtterances']})
     return u
   })
-})
-
-
-var litMeaning = function(u, m) {
-  return u == 'zop' ? true : u == m
 }
+
+
+var litMeaning = cache(function(u, m) {
+  return u == 'zop' ? true : u == m
+})
 
 var L0 = cache(function(u) {
 	Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: [24, 8]})
-      factor(litMeaning(u, m) ? 0 : -Infinity)
+      condition(litMeaning(u, m))
       return m
     })
 })
@@ -30,19 +30,37 @@ var S1 = cache(function(m, params) {
     })
 })
 
+var L1 = cache(function(u, params) {
+	Infer({method: 'enumerate'}, function() {
+      var m = categorical({vs: meanings, ps: [24, 8]})
+      var S = S1(m, params)
+      factor(S.score(u))
+      return m
+    })
+})
+
+var S2 = cache(function(m, params) {
+	Infer({method: 'enumerate'}, function()  {
+      var u = categorical({vs: utterances, ps: params['pUtterances']})
+      var L = L1(u, params)
+      factor(params['alpha'] * L.score(m))
+      return u
+    })
+})
+
 var getSubjParams = mem(function(subjId) {
   return {
     'conditionType': uniformDraw(['combined', 'accuracy', 'time', 'neither']),
-    'alpha': uniformDraw(_.range(1, 4)),
+    'alpha': uniformDraw(_.range(1, 10)),
     'attention': beta(5, 1)
   }
 })
 
 var getSpeaker = cache(function(conditionType) {
   var speakers = {
-    'combined': [S1, {'pUtterances': [3, 1, 1]}],
-    'accuracy': [S1, {'pUtterances': [1, 1, 1]}],
-    'time': [S0, {'pUtterances': [3, 1, 1]}],
+    'combined': [S2, {'pUtterances': [10, 1, 1]}],
+    'accuracy': [S2, {'pUtterances': [1, 1, 1]}],
+    'time': [S0, {'pUtterances': [10, 1, 1]}],
     'neither': [S0, {'pUtterances': [1, 1, 1]}]
   }
   return speakers[conditionType]
@@ -51,11 +69,10 @@ var getSpeaker = cache(function(conditionType) {
 // var S = getSpeaker('combined')[0]
 // var params = getSpeaker('combined')[1]
 var propIsShort = function(utterances) {
-  return sum(map(function(x) {return x == 'zop'}, utterances)) / utterances.length
+  return sum(map(function(x) {return x == 'zop'}, utterances))
 }
 
-var runExperiment = function(subjParams, displayType) {
-  var n = 20
+var runExperiment = function(subjParams, displayType, n) {
   // Get subject strategy (condition)
   var conditionType = subjParams['conditionType']
   // Get subject alpha
@@ -74,196 +91,38 @@ var runExperiment = function(subjParams, displayType) {
   return propIsShort(utterances)
 }
 
-var runSubject = function(subjId, displayType) {
-  Infer({'method': 'rejection', 'samples': 1000}, function() {
-    var subjParams = getSubjParams(subjId)
-    return runExperiment(subjParams, displayType)
+// var runSubjectOpts = {'method': 'rejection', 'samples': 500}
+// var runSubjectOpts = {'method': 'enumerate'}
+var runSubjectOpts = {'method': 'MCMC', 'samples': 750}
+var runSubject = cache(function(subjId, alpha, conditionType, attention, displayType, n) {
+  Infer(runSubjectOpts, function() {
+    var params = {
+      'alpha': alpha,
+      'conditionType': conditionType,
+      'attention': attention
+    }
+    return runExperiment(params, displayType, n)
   })
-}
+})
 
-var opts = {method: 'MCMC', 'samples': 2000, callbacks: [editor.MCMCProgress()]}
+var opts = {method: 'MCMC', 'samples': 100, kernel: {HMC: {steps: 2, stepSize: 0.5}}, callbacks: [editor.MCMCProgress()]}
+// var opts = {method: 'MCMC', 'samples': 1000, callbacks: [editor.MCMCProgress()]}
+var opts = {method: "MCMC",
+//             onlyMAP:true, 
+            samples: 200, 
+            burn: 50,
+            callbacks: [editor.MCMCProgress()]};
 var results = function(subjId) {
   Infer(opts, function() {
-    observe(runSubject(subjId, 'frequent'), 1.0)
-    observe(runSubject(subjId, 'infrequent'), 0.0)
-    return getSubjParams(subjId)
+    var conditionType = uniformDraw(['combined', 'accuracy', 'time', 'neither'])
+    var alpha = uniformDraw(_.range(1, 10))
+    var attention = beta(5, 1)
+    observe(runSubject(subjId, alpha, conditionType, attention, 'frequent', 24), 18)
+    observe(runSubject(subjId, alpha, conditionType, attention, 'infrequent', 8), 8)
+    return {'alpha': alpha, 
+            'conditionType': conditionType, 
+            'attention': attention}
   })
 }
+
 viz.marginals(results(100))
-
-
-// Combined condition
-// speaker and listener
-// long utterances are more costly
-// viz.table(S1('zopudon', {'pUtterances': [2, 1, 1]}))
-
-// Accuracy condition
-// speaker and listener
-// no differences in costs
-// viz.table(S1('zopudon', {'pUtterances': [1, 1, 1]}))
-
-// Time condition
-// Only speaker
-// differences in costs
-// viz.table(S0('zopudon', {'pUtterances': [2, 1, 1]}))
-
-// Niether condition
-// Only speaker
-// no differences in costs
-// viz.table(S0('zopudon', {'pUtterances': [2, 1, 1]}))
-
-
-
-
-
-
-
-/*
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-WebPPL
-File:
-
-// BDA model
-// Notes:
-// Maybe make hierarchical -- so we have conditions and then based 
-// on condition infer the specific costs etc
-​
-var geometric_ = function(p) {
-    return flip(p) ? 1 + geometric_(p) : 1
-}
-​
-var Geometric = function(p) {
-  return Infer({method: 'rejection', samples: 1000}, function() {
-    return geometric_(p)
-  })
-}
-​
-var geometric = function(p) {
-    return sample(Geometric(p))
-}
-​
-​
-var countByFilter = function(l, fn) {
-  return sum(map(fn, l))
-}
-​
-var nTrials = 32
-​
-​
-var utterances = ['zop', 'zopudon', 'zopekil']
-var meanings = ['zopudon', 'zopekil']
-​
-var litMeaning = function(u, m) {
-  return u == 'zop' ? true : u == m
-}
-​
-var L0 = cache(function(u, params) {
-    return Infer({method: 'enumerate'}, function() {
-      var m = categorical({vs: meanings, ps: [params['pMeanings'], 1-params['pMeanings']]})
-      condition(litMeaning(u, m))
-      return m
-    })
-})
-​
-var S1 = cache(function(m, params) {
-    return Infer({method: 'enumerate'}, function()  {
-      var u = categorical({vs: utterances, 
-                           ps: [params['pShort'], params['pLong'], params['pLong']]})
-      var L = L0(u, params)
-      factor(params['alpha'] * L.score(m))
-      return u
-    })      
-})
-​
-var getSubjParams = mem(function(subjId) {
-  var params = {  
-    'alpha': categorical({vs:_.range(1, 3)}),
-//     'alpha': 1,
-//     'pZopudon': T.toScalars(dirichlet(ones([3, 1]))),
-    'pLong': beta(1, 1),
-    'pShort': beta(1, 1),
-//     'pUtterances': [0.8, 0.1, 0.1],
-    'pMeanings': beta(24, 8)
-//     'pMeanings': [0.75, 0.25]
-  }
-  return params
-})
-​
-var takeExperiment = function(subjId, conditionType) {
-  return Infer({method: 'MCMC', samples:200}, function() {
-    var speakerParams = getSubjParams(subjId)
-    // Frequent referrent
-    var frequent = repeat(10, function() {sample(S1(conditionType, speakerParams))})
-    return countByFilter(frequent, function(x) {return x.length==3}) / 10
-  })
-}
-​
-var rData = [
-  {"Unnamed: 0":0,"IP":"100.10.40.83","condition":"combined","display_type":"frequent","prop_long":0.0,"prop_short":1.0},
-  {"Unnamed: 0":1,"IP":"100.2.122.157","condition":"combined","display_type":"frequent","prop_long":0.0416666667,"prop_short":0.9583333333},
-  {"Unnamed: 0":2,"IP":"104.11.62.66","condition":"accuracy","display_type":"frequent","prop_long":1.0,"prop_short":0.0},
-  {"Unnamed: 0":3,"IP":"104.174.222.43","condition":"combined","display_type":"frequent","prop_long":1.0,"prop_short":0.0},
-  {"Unnamed: 0":4,"IP":"104.175.214.163","condition":"accuracy","display_type":"frequent","prop_long":1.0,"prop_short":0.0},
-  {"Unnamed: 0":5,"IP":"104.57.161.213","condition":"time","display_type":"frequent","prop_long":0.0208333333,"prop_short":0.9791666667}]
-​
-  var opts = {
-  'method': 'MCMC',
-  'samples': 1000
-}
-​
-var dataAnalysis = function() {
-  Infer(opts, function() {
-    mapData({data: rData}, function(datum) {
-      observe(takeExperiment(datum.IP, 'zopudon'), 1.0)
-      observe(takeExperiment(datum.IP, 'zopekil'), 0.0)
-    })
-    return mapData({data: rData}, function(datum) {
-      var params = getSubjParams(datum.IP)
-      return {
-        'subjID': datum.IP, 
-        'alpha': params['alpha'],
-        'pMeanings': params['pMeanings'],
-        'pShort': params['pShort'],
-        'pLong': params['pLong'] }
-    })
-  })
-}
-​
-var IPs = map(function(x) {return x.IP}, _.uniqBy(rData, 'IP'))
-// _.uniqBy(data, 'id');
-​
-var getSubjPosteriors = function() {
-  mapData({data:rData}, function(datum) {
-    Infer(opts, function() {
-      observe(takeExperiment(datum.IP, 'zopudon'), 1.0)
-      observe(takeExperiment(datum.IP, 'zopekil'), 0.0)
-    })
-  })
-  map(function(datum) {
-    var params = getSubjParams(datum)
-    return {
-      'subjID': datum.IP, 
-      'alpha': params['alpha'],
-      'pMeanings': params['pMeanings'],
-      'pShort': params['pShort'],
-      'pLong': params['pLong'] }
-    }, IPs)
-}
-getSubjPosteriors()
-run▼
-X
-[{"alpha":1,"pMeanings":0.690079692760881,"pShort":0.771899476108979,"pLong":0.9034396340899105},{"alpha":1,"pMeanings":0.8461194833855181,"pShort":0.6603190552227958,"pLong":0.2489561212207115},{"alpha":1,"pMeanings":0.8259292109958394,"pShort":0.06835165717099764,"pLong":0.6914150482915805},{"alpha":2,"pMeanings":0.681310551822105,"pShort":0.89415201555237,"pLong":0.3282602707610742},{"alpha":2,"pMeanings":0.7672177957760483,"pShort":0.5607122179701451,"pLong":0.3247296521364057},{"alpha":2,"pMeanings":0.7831819828002253,"pShort":0.37337603428696414,"pLong":0.3667996794985183}]
-x▲▼
