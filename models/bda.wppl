@@ -1,3 +1,13 @@
+var geometric = function(p) {
+  return flip(p) ? geometric() + 1 : 0;
+}
+
+var Geometric = function(p) {
+  Infer({method: 'enumerate', maxExecutions: 10}, function() {
+    geometric(p)
+  })
+}
+
 var utterances = ['zop', 'zopudon', 'zopekil']
 var meanings = ['zopudon', 'zopekil']
 
@@ -13,9 +23,9 @@ var litMeaning = cache(function(u, m) {
   return u == 'zop' ? true : u == m
 })
 
-var L0 = cache(function(u) {
+var L0 = cache(function(u, params) {
 	Infer({method: 'enumerate'}, function() {
-      var m = categorical({vs: meanings, ps: [24, 8]})
+      var m = categorical({vs: meanings, ps: params['pMeanings']})
       condition(litMeaning(u, m))
       return m
     })
@@ -24,7 +34,7 @@ var L0 = cache(function(u) {
 var S1 = cache(function(m, params) {
 	Infer({method: 'enumerate'}, function()  {
       var u = categorical({vs: utterances, ps: params['pUtterances']})
-      var L = L0(u)
+      var L = L0(u, params)
       factor(params['alpha'] * L.score(m))
       return u
     })
@@ -32,7 +42,7 @@ var S1 = cache(function(m, params) {
 
 var L1 = cache(function(u, params) {
 	Infer({method: 'enumerate'}, function() {
-      var m = categorical({vs: meanings, ps: [24, 8]})
+      var m = categorical({vs: meanings, ps: params['pMeanings']})
       var S = S1(m, params)
       factor(S.score(u))
       return m
@@ -58,10 +68,11 @@ var getSubjParams = mem(function(subjId) {
 
 var getSpeaker = cache(function(conditionType) {
   var speakers = {
-    'combined': [S2, {'pUtterances': [10, 1, 1]}],
-    'accuracy': [S2, {'pUtterances': [1, 1, 1]}],
-    'time': [S0, {'pUtterances': [10, 1, 1]}],
-    'neither': [S0, {'pUtterances': [1, 1, 1]}]
+    'combined': [S2, {'pUtterances': [10, 1, 1], 'pMeanings': [24, 8]}],
+    'conventionalized': [S2, {'pUtterances': [10, 1, 1], 'pMeanings': [8, 24]}],
+    'accuracy': [S2, {'pUtterances': [1, 1, 1], 'pMeanings': [24, 8]}],
+    'time': [S0, {'pUtterances': [10, 1, 1], 'pMeanings': [24, 8]}],
+    'neither': [S0, {'pUtterances': [1, 1, 1], 'pMeanings': [24, 8]}]
   }
   return speakers[conditionType]
 })
@@ -108,21 +119,59 @@ var runSubject = cache(function(subjId, alpha, conditionType, attention, display
 var opts = {method: 'MCMC', 'samples': 100, kernel: {HMC: {steps: 2, stepSize: 0.5}}, callbacks: [editor.MCMCProgress()]}
 // var opts = {method: 'MCMC', 'samples': 1000, callbacks: [editor.MCMCProgress()]}
 var opts = {method: "MCMC",
-//             onlyMAP:true, 
-            samples: 200, 
-            burn: 50,
+            onlyMAP:true, 
+            samples: 100, 
+            burn: 10,
             callbacks: [editor.MCMCProgress()]};
-var results = function(subjId) {
+var results = function(subjId, countFrequent, countInfrequent) {
   Infer(opts, function() {
-    var conditionType = uniformDraw(['combined', 'accuracy', 'time', 'neither'])
+    var conditionType = uniformDraw(['combined', 'accuracy', 'time', 'neither', 'conventionalized'])
     var alpha = uniformDraw(_.range(1, 10))
     var attention = beta(5, 1)
-    observe(runSubject(subjId, alpha, conditionType, attention, 'frequent', 24), 18)
-    observe(runSubject(subjId, alpha, conditionType, attention, 'infrequent', 8), 8)
+    var recursiveDepth = sample(Geometric(0.3))
+    observe(runSubject(subjId, alpha, conditionType, attention, 'frequent', 24), countFrequent)
+    observe(runSubject(subjId, alpha, conditionType, attention, 'infrequent', 8), countInfrequent)
     return {'alpha': alpha, 
             'conditionType': conditionType, 
             'attention': attention}
   })
 }
 
-viz.marginals(results(100))
+
+var rData = [
+  {"Unnamed: 0":0,
+   "IP":"100.10.40.83",
+   "condition":"combined",
+   "display_type":"frequent",
+   "prop_long":0,
+   "prop_short":24},
+  {"Unnamed: 0":1,
+   "IP":"100.2.122.157",
+   "condition":"combined",
+   "display_type":"frequent",
+   "prop_long":2,
+   "prop_short":23},
+  {"Unnamed: 0":2,
+   "IP":"104.11.62.66",
+   "condition":"accuracy",
+   "display_type":"frequent",
+   "prop_long":8,
+   "prop_short":0},
+  {"Unnamed: 0":3,
+   "IP":"104.174.222.43",
+   "condition":"combined",
+   "display_type":"frequent",
+   "prop_long":8,
+   "prop_short":0},
+  {"Unnamed: 0":4,
+   "IP":"104.175.214.163",
+   "condition":"accuracy",
+   "display_type":"frequent",
+   "prop_long":8,"prop_short":0}]
+
+var res = mapData({data: rData}, function(datum) {
+  console.log(datum.IP)
+  results(datum.IP, datum.prop_short, datum.prop_long)
+})
+
+viz.marginals(res[0])
