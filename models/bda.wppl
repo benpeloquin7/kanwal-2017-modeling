@@ -45,7 +45,6 @@ var S0 = function(m, params) {
   })
 }
 
-
 var litMeaning = cache(function(u, m) {
   return u == 'zop' ? true : u == m
 })
@@ -94,34 +93,34 @@ var L2 = cache(function(u, params) {
     })
 })
 
-var S3 = function(m, params) {
+var S3 = cache(function(m, params) {
 	Infer({method: 'enumerate'}, function()  {
       var u = utterancesPrior()
       var L = L2(u, params)
-      factor(params['alpha'] * (L.score(m))-cost(u, params))
+      factor(params['alpha'] * (L.score(m) - cost(u, params)))
       return u
     })
+})
+
+
+var getSpeakerModel = function(conditionType, depth) {
+  var recursiveSpeakers = {
+    '1': S1,
+    '2': S2,
+    '3': S3
+  }
+  return conditionType == 'time' ? S0 : recursiveSpeakers[depth]
 }
 
-
-var getSpeaker = cache(function(conditionType) {
-  var speakers = {
-    'combined': [S3, {'costs': [1, 4, 4], 
-                      'pMeanings': [24, 8]}],
-    'conventionalized': [S3, {'costs': [1, 4, 4], 
-                              'pMeanings': [8, 24]}],
-    'accuracy': [S3, {'costs': [1, 1, 1], 
-                      'pMeanings': [24, 8]}],
-    'time': [S0, {'costs': [1, 1, 1], 
-                  'pMeanings': [24, 8]}],
-    'neither': [S0, {'costs': [1, 1, 1], 
-                     'pMeanings': [24, 8]}],
-    'alwaysShort': [alwaysShort, {'costs': [1, 1, 1], 
-                                  'pMeanings': [24, 8]}],
-    'alwaysLong': [alwaysLong, {'costs': [1, 1, 1], 
-                                'pMeanings': [24, 8]}]
+var getSpeakerParams = cache(function(conditionType) {
+  var params = {
+    'combined': {'costs': [1, 2, 2], 'pMeanings': [24, 8]},
+    'conventionalized': {'costs': [1, 2, 2], 'pMeanings': [8, 24]},
+    'accuracy': {'costs': [1, 1, 1],  'pMeanings': [24, 8]},
+    'time': {'costs': [1, 2, 2], 'pMeanings': [24, 8]},
+    'neither': {'costs': [1, 1, 1], 'pMeanings': [24, 8]}
   }
-  return speakers[conditionType]
+  return params[conditionType]
 })
 
 var countIsShort = function(utterances) {
@@ -133,10 +132,12 @@ var runExperiment = function(subjParams, displayType, n) {
   var conditionType = subjParams['conditionType']
   // Get subject alpha
   var alpha = subjParams['alpha']
+  // Get subject depth
+  var depth = subjParams['depth']
   // Get subject attention
   var attention = subjParams['attention']
-  var speaker = getSpeaker(conditionType)[0]
-  var params = _.merge(getSpeaker(conditionType)[1], {'alpha': alpha})
+  var speaker = getSpeakerModel(conditionType, depth)
+  var params = _.merge(getSpeakerParams(conditionType), {'alpha': alpha})
   var meaning = displayType == 'frequent' ? 'zopudon' : 'zopekil'
   var speak = function() {
     return flip(attention) ?
@@ -150,10 +151,11 @@ var runExperiment = function(subjParams, displayType, n) {
 // var runSubjectOpts = {'method': 'MCMC', 'samples': 1000, 'kernel': 'MH',}
 var runSubjectOpts = {'method': 'MCMC', 'samples': 1000, kernel: {HMC: {steps: 10, stepSize: 1}}}
 // var runSubjectOpts = {method: 'optimize', samples: 100, steps: 100, optMethod: {adam: {stepSize: 0.1}}}
-var runSubject = function(subjId, alpha, conditionType, attention, displayType, n) {
+var runSubject = function(subjId, alpha, depth, conditionType, attention, displayType, n) {
   Infer(runSubjectOpts, function() {
     var params = {
       'alpha': alpha,
+      'depth': depth,
       'conditionType': conditionType,
       'attention': attention
     }
@@ -162,11 +164,12 @@ var runSubject = function(subjId, alpha, conditionType, attention, displayType, 
 }
 
 // var opts = {method: 'MCMC', 'samples': 100, kernel: {HMC: {steps: 2, stepSize: 0.5}}, callbacks: [editor.MCMCProgress()]}
-var opts = {method: 'MCMC', 'samples': 200, callbacks: [editor.MCMCProgress()]}
+var opts = {method: 'MCMC', 'samples': 200,  kernel: 'MH'}
 // var opts = {method: "MCMC", onlyMAP:true,  samples: 200, burn: 100, callbacks: [editor.MCMCProgress()]};
 // var opts = {'method': 'MCMC', 'samples': 1000, kernel: {HMC: {steps: 10, stepSize: 1}}}
 var inferSubjParams = function(datum) {
   Infer(opts, function() {
+    var depth = uniformDraw(['1', '2', '3'])
     var conditionType = uniformDraw(['combined', 
                                      'accuracy', 
                                      'time', 
@@ -174,10 +177,11 @@ var inferSubjParams = function(datum) {
                                      'conventionalized'])
     var alpha = uniformDraw(_.range(1, 20))
     var attention = beta(10, 1)
-    observe(runSubject(datum.IP, alpha, conditionType, attention, 'frequent', datum.frequent_n), datum.frequent_cnt)
-    observe(runSubject(datum.IP, alpha, conditionType, attention, 'infrequent', datum.infrequent_n), datum.infrequent_cnt)
+    observe(runSubject(datum.IP, alpha, depth, conditionType, attention, 'frequent', datum.frequent_n), datum.frequent_cnt)
+    observe(runSubject(datum.IP, alpha, depth, conditionType, attention, 'infrequent', datum.infrequent_n), datum.infrequent_cnt)
     return {
       'inferredAlpha': alpha, 
+      'inferredDepth': depth,
       'inferredCondition': conditionType, 
       'inferredAttention': attention
     }
@@ -185,40 +189,44 @@ var inferSubjParams = function(datum) {
 }
 
 // var rData = [{"IP":"100.10.40.83","condition":"combined","frequent_cnt":24,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"100.2.122.157","condition":"combined","frequent_cnt":23,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"104.11.62.66","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"104.174.222.43","condition":"combined","frequent_cnt":0,"infrequent_cnt":4,"frequent_n":24,"infrequent_n":8},{"IP":"104.175.214.163","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"104.57.161.213","condition":"time","frequent_cnt":47,"infrequent_cnt":16,"frequent_n":48,"infrequent_n":16},{"IP":"107.13.61.217","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"107.161.163.8","condition":"combined","frequent_cnt":2,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"107.2.1.30","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"108.196.136.202","condition":"accuracy","frequent_cnt":3,"infrequent_cnt":5,"frequent_n":24,"infrequent_n":8},{"IP":"108.210.65.252","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"108.23.68.36","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"115.241.81.138","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"115.242.129.102","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"115.98.55.114","condition":"accuracy","frequent_cnt":1,"infrequent_cnt":2,"frequent_n":24,"infrequent_n":8},{"IP":"115.99.18.32","condition":"combined","frequent_cnt":5,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"117.213.33.129","condition":"combined","frequent_cnt":1,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"117.229.19.52","condition":"combined","frequent_cnt":0,"infrequent_cnt":8,"frequent_n":24,"infrequent_n":8},{"IP":"122.161.26.31","condition":"combined","frequent_cnt":10,"infrequent_cnt":5,"frequent_n":24,"infrequent_n":8},{"IP":"140.141.208.86","condition":"time","frequent_cnt":25,"infrequent_cnt":9,"frequent_n":48,"infrequent_n":16},{"IP":"142.196.192.44","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"162.239.52.23","condition":"combined","frequent_cnt":22,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"163.47.15.206","condition":"combined","frequent_cnt":5,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"172.91.192.214","condition":"combined","frequent_cnt":18,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"173.68.90.30","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"173.78.132.154","condition":"time","frequent_cnt":47,"infrequent_cnt":16,"frequent_n":48,"infrequent_n":16},{"IP":"174.124.100.111","condition":"accuracy","frequent_cnt":24,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"174.140.64.232","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"174.55.10.72","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"174.71.79.180","condition":"combined","frequent_cnt":24,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"182.65.31.144","condition":"combined","frequent_cnt":18,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"183.82.201.213","condition":"accuracy","frequent_cnt":9,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"184.155.134.46","condition":"time","frequent_cnt":33,"infrequent_cnt":9,"frequent_n":48,"infrequent_n":16},{"IP":"190.40.243.234","condition":"time","frequent_cnt":46,"infrequent_cnt":15,"frequent_n":48,"infrequent_n":16},{"IP":"197.164.51.196","condition":"accuracy","frequent_cnt":3,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8},{"IP":"199.66.168.75","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"200.106.22.194","condition":"accuracy","frequent_cnt":13,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8},{"IP":"207.119.81.116","condition":"accuracy","frequent_cnt":1,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8},{"IP":"209.242.152.162","condition":"accuracy","frequent_cnt":2,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"216.26.183.5","condition":"accuracy","frequent_cnt":1,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"24.113.49.186","condition":"time","frequent_cnt":28,"infrequent_cnt":3,"frequent_n":48,"infrequent_n":16},{"IP":"24.167.83.155","condition":"combined","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"24.191.98.160","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"24.20.229.200","condition":"combined","frequent_cnt":23,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8},{"IP":"24.253.233.194","condition":"combined","frequent_cnt":23,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8},{"IP":"24.33.78.134","condition":"combined","frequent_cnt":21,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"24.56.254.22","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"24.74.13.244","condition":"time","frequent_cnt":33,"infrequent_cnt":5,"frequent_n":48,"infrequent_n":16},{"IP":"38.88.53.50","condition":"combined","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"49.206.202.131","condition":"combined","frequent_cnt":24,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"50.150.62.48","condition":"combined","frequent_cnt":17,"infrequent_cnt":5,"frequent_n":24,"infrequent_n":8},{"IP":"50.153.162.232","condition":"combined","frequent_cnt":18,"infrequent_cnt":2,"frequent_n":24,"infrequent_n":8},{"IP":"50.153.191.59","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"50.155.75.81","condition":"accuracy","frequent_cnt":17,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"50.157.182.233","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"50.51.102.96","condition":"accuracy","frequent_cnt":24,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"59.93.15.89","condition":"combined","frequent_cnt":15,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8},{"IP":"59.98.251.98","condition":"combined","frequent_cnt":23,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"65.183.140.246","condition":"combined","frequent_cnt":22,"infrequent_cnt":3,"frequent_n":24,"infrequent_n":8},{"IP":"65.28.161.177","condition":"time","frequent_cnt":47,"infrequent_cnt":16,"frequent_n":48,"infrequent_n":16},{"IP":"66.56.8.213","condition":"combined","frequent_cnt":15,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"67.168.183.190","condition":"time","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":48,"infrequent_n":16},{"IP":"67.187.0.173","condition":"time","frequent_cnt":47,"infrequent_cnt":15,"frequent_n":48,"infrequent_n":16},{"IP":"67.44.208.28","condition":"time","frequent_cnt":32,"infrequent_cnt":6,"frequent_n":48,"infrequent_n":16},{"IP":"67.85.42.18","condition":"combined","frequent_cnt":22,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"68.114.220.220","condition":"combined","frequent_cnt":1,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"68.184.74.170","condition":"time","frequent_cnt":32,"infrequent_cnt":10,"frequent_n":48,"infrequent_n":16},{"IP":"68.194.164.153","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"68.204.111.135","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"68.63.39.20","condition":"combined","frequent_cnt":13,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"69.136.182.208","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"69.65.45.56","condition":"combined","frequent_cnt":22,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"69.66.162.73","condition":"accuracy","frequent_cnt":2,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"71.112.135.232","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"71.196.89.171","condition":"time","frequent_cnt":8,"infrequent_cnt":0,"frequent_n":48,"infrequent_n":16},{"IP":"71.56.37.206","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"71.71.193.230","condition":"accuracy","frequent_cnt":5,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8},{"IP":"71.90.149.208","condition":"time","frequent_cnt":47,"infrequent_cnt":16,"frequent_n":48,"infrequent_n":16},{"IP":"72.135.113.249","condition":"time","frequent_cnt":37,"infrequent_cnt":14,"frequent_n":48,"infrequent_n":16},{"IP":"72.182.90.103","condition":"combined","frequent_cnt":16,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8},{"IP":"72.9.28.126","condition":"combined","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"73.11.80.136","condition":"combined","frequent_cnt":14,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"73.173.175.17","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"73.197.156.172","condition":"combined","frequent_cnt":0,"infrequent_cnt":8,"frequent_n":24,"infrequent_n":8},{"IP":"73.246.28.166","condition":"combined","frequent_cnt":0,"infrequent_cnt":7,"frequent_n":24,"infrequent_n":8},{"IP":"73.42.71.240","condition":"accuracy","frequent_cnt":2,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"73.51.84.163","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"74.136.96.163","condition":"time","frequent_cnt":47,"infrequent_cnt":16,"frequent_n":48,"infrequent_n":16},{"IP":"74.74.166.82","condition":"combined","frequent_cnt":1,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"74.87.33.130","condition":"combined","frequent_cnt":23,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"75.134.222.94","condition":"accuracy","frequent_cnt":2,"infrequent_cnt":4,"frequent_n":24,"infrequent_n":8},{"IP":"75.168.190.50","condition":"time","frequent_cnt":44,"infrequent_cnt":0,"frequent_n":48,"infrequent_n":16},{"IP":"75.5.249.84","condition":"time","frequent_cnt":48,"infrequent_cnt":16,"frequent_n":48,"infrequent_n":16},{"IP":"75.83.166.148","condition":"combined","frequent_cnt":22,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"76.107.196.14","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"76.167.44.190","condition":"combined","frequent_cnt":0,"infrequent_cnt":8,"frequent_n":24,"infrequent_n":8},{"IP":"79.126.171.64","condition":"time","frequent_cnt":46,"infrequent_cnt":15,"frequent_n":48,"infrequent_n":16},{"IP":"80.101.212.2","condition":"accuracy","frequent_cnt":10,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"96.60.207.27","condition":"time","frequent_cnt":46,"infrequent_cnt":14,"frequent_n":48,"infrequent_n":16},{"IP":"98.169.35.68","condition":"combined","frequent_cnt":22,"infrequent_cnt":4,"frequent_n":24,"infrequent_n":8},{"IP":"98.234.65.43","condition":"time","frequent_cnt":48,"infrequent_cnt":15,"frequent_n":48,"infrequent_n":16},{"IP":"98.251.96.30","condition":"accuracy","frequent_cnt":1,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},{"IP":"99.195.31.91","condition":"combined","frequent_cnt":1,"infrequent_cnt":1,"frequent_n":24,"infrequent_n":8}]
-//var rData = [{"IP":"67.168.183.190","condition":"time","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":48,"infrequent_n":16}]
-// Problem IPs
-// var rData = [{"IP":"142.196.192.44","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},
+// // Problem IPs
+// var rData = [{"IP":"104.57.161.213","condition":"time","frequent_cnt":47,"infrequent_cnt":16,"frequent_n":48,"infrequent_n":16},
+//              {"IP":"142.196.192.44","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},
 // {"IP":"173.242.228.167","condition":"neither","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":48,"infrequent_n":16},
 // {"IP":"104.57.161.213","condition":"time","frequent_cnt":47,"infrequent_cnt":16,"frequent_n":48,"infrequent_n":16},
 // {"IP":"104.11.62.66","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8},
 // {"IP":"184.155.134.46","condition":"time","frequent_cnt":33,"infrequent_cnt":9,"frequent_n":48,"infrequent_n":16},
 // {"IP":"67.168.183.190","condition":"time","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":48,"infrequent_n":16},
 // {"IP":"108.210.65.252","condition":"accuracy","frequent_cnt":0,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8}]
-var rData = [{"IP":"100.10.40.83","condition":"combined","frequent_cnt":24,"infrequent_cnt":0,"frequent_n":24,"infrequent_n":8}]
 
 var results = mapData({data: rData}, function(datum) {
 	console.log("Running IP: ", datum.IP)
 	var inferredSubjParams = inferSubjParams(datum)
+   
 	var alpha = sample(marginalize(inferredSubjParams, function(x) {
 		return x['inferredAlpha']
+	}))
+    var depth = sample(marginalize(inferredSubjParams, function(x) {
+		return x['inferredDepth']
 	}))
 	var inferredCondition = sample(marginalize(inferredSubjParams, function(x) {
 		return x['inferredCondition']
 	}))
 	var attention = marginalize(inferredSubjParams, function(x) {
 		return x['inferredAttention']
-	})  
+	})
 	var inferredAttention = expectation(attention)
 	var result = {
       'IP': datum.IP,
       'alpha': alpha,
+      'depth': depth,
       'inferredCondition': inferredCondition,
       'inferredAttention': expectation(attention),
       'actualCondition': datum.condition,
       'actualFrequent': datum.frequent_cnt,
       'actualInfrequent': datum.infrequent_cnt,
-      'posteriorPredictiveFrequent': expectation(runSubject(datum.IP, alpha, inferredCondition, inferredAttention, 'frequent', datum.frequent_n)),
-      'posteriorPredictiveInfrequent': expectation(runSubject(datum.IP, alpha, inferredCondition, inferredAttention, 'infrequent', datum.infrequent_n))
+      'posteriorPredictiveFrequent': expectation(runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'frequent', datum.frequent_n)),
+      'posteriorPredictiveInfrequent': expectation(runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'infrequent', datum.infrequent_n))
 	}
   	return result
 })
