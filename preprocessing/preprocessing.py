@@ -110,6 +110,33 @@ def create_IP_probs_df(df_all_combined):
     return df_merged
 
 
+def create_IP_cnts_df(df_all_combined):
+    """Each row corresponds to an IP address.
+
+    Contains number of times the participants chose the SHORTENED ('zop') form.
+
+    """
+    df_short = df_all_combined \
+        .groupby(['IP', 'condition', 'display_type', 'label_type']) \
+        .count()['L1'] \
+        .reset_index() \
+        .rename(columns={'L1': 'cnt'}) \
+        .groupby(['IP', 'condition']) \
+        .apply(fill_missing_rows) \
+        .set_index(['IP']) \
+        .reset_index() \
+        .drop(columns=['index']) \
+        .query('label_type == "short"') \
+        .pivot_table(values='cnt', index=['IP', 'condition'],
+                     columns=['display_type']) \
+        .reset_index() \
+        .groupby(['IP', 'condition']) \
+        .apply(add_n) \
+        .rename(
+        columns={'frequent': 'frequent_cnt', 'infrequent': 'infrequent_cnt'})
+    return df_short
+
+
 if __name__ == '__main__':
     import argparse
     import logging
@@ -127,12 +154,14 @@ if __name__ == '__main__':
 if not os.path.exists(args.out_dir):
     os.makedirs(args.out_dir)
 
-fp_raw_all = os.path.join(args.out_dir, 'preprocessed_all.csv')
-fp_props_all = os.path.join(args.out_dir, 'props_all.csv')
+fp_raw_all = os.path.join(args.out_dir, 'preprocessed_all')
+fp_props_all = os.path.join(args.out_dir, 'counts_all')
 df_raw_all = combine_raw_datasets()
 df_all_proportions = create_IP_probs_df(df_raw_all)
 
 logging.info("Caching {}".format(fp_raw_all))
-df_raw_all.to_csv(fp_raw_all)
+df_raw_all.to_csv('{}{}'.format(fp_raw_all, ".csv"))
+df_raw_all.to_json('{}{}'.format(fp_raw_all, ".json"), orient='records')
 logging.info("Caching {}".format(fp_props_all))
-df_all_proportions.to_csv(fp_props_all)
+df_all_proportions.to_csv('{}{}'.format(fp_props_all, ".csv"))
+df_all_proportions.to_json('{}{}'.format(fp_props_all, ".json"), orient='records')

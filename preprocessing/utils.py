@@ -57,6 +57,30 @@ def fill_missing_rows(x):
     return x
 
 
+def add_n(x):
+    """Add IP by condition by display type counts.
+
+    That is, a person in the "combined" condition saw 24 instances of the
+    common ('frequent') item and 8 instances of the infrequent item.
+
+    """
+    condition = x['condition'].values[0]
+    if condition == 'combined':
+        x['frequent_n'] = 24
+        x['infrequent_n'] = 8
+    elif condition == 'accuracy':
+        x['frequent_n'] = 24
+        x['infrequent_n'] = 8
+    elif condition == 'time':
+        x['frequent_n'] = 48
+        x['infrequent_n'] = 16
+    elif condition == 'neither':
+        x['frequent_n'] = 48
+        x['infrequent_n'] = 16
+    else:
+        raise Exception("{} condition unknown...".format())
+    return x
+
 def label_props(x):
     x['prop'] = x['cnt'] / sum(x['cnt'])
     return x
