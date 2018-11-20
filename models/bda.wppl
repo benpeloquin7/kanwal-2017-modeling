@@ -37,19 +37,36 @@ var cost = function(u, params) {
   return costs[u]
 }
 
-var S0 = function(m, params) {
+var S0 = cache(function(m, params) {
+  /* Literal speaker only considers costs.
+
+  Example params:
+
+    {alpha: 1, 'pMeanings': [24, 8], 'costs': [1, 1, 1]}
+
+  */
   Infer({method: 'enumerate'}, function() {
     var u = utterancesPrior()
     factor(params['alpha'] * -cost(u, params))
     return u
   })
-}
+})
 
 var litMeaning = cache(function(u, m) {
+  /* Literal semantics function.
+
+  \delta(u, m) returns 0/1
+
+  */
   return u == 'zop' ? true : u == m
 })
 
 var L0 = cache(function(u, params) {
+  /* Literal listener
+
+  Recursion base-case, reasons about literal semantics.
+
+  */
 	Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: params['pMeanings']})
       condition(litMeaning(u, m))
@@ -58,6 +75,14 @@ var L0 = cache(function(u, params) {
 })
 
 var S1 = cache(function(m, params) {
+  /* First order speaker
+
+  Reasons abou literal listener.
+
+  Chooses an utterances by considering the it's cost and the
+  informativity w.r.t to the listener.
+
+  */
 	Infer({method: 'enumerate'}, function()  {
       var u = utterancesPrior()
       var L = L0(u, params)
@@ -67,6 +92,14 @@ var S1 = cache(function(m, params) {
 })
 
 var L1 = cache(function(u, params) {
+  /* First order listener
+
+  Reasons about S1 speaker.
+
+  Chooses an utterances by considering the it's cost and the
+  informativity w.r.t to the listener.
+
+  */
 	Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: params['pMeanings']})
       var S = S1(m, params)
@@ -104,6 +137,12 @@ var S3 = cache(function(m, params) {
 
 
 var getSpeakerModel = function(conditionType, depth) {
+  /*
+  Return a speaker model's recursive depth (1-3)
+
+  Note that if condition is time (or neither) there 
+  is no listener.
+  */
   var recursiveSpeakers = {
     '1': S1,
     '2': S2,
@@ -112,7 +151,14 @@ var getSpeakerModel = function(conditionType, depth) {
   return conditionType == 'time' ? S0 : recursiveSpeakers[depth]
 }
 
-var getSpeakerParams = cache(function(conditionType) {
+var getConditionParams = cache(function(conditionType) {
+  /*
+
+  Get condition params (conditions as instantiate din Kanwall (2017)
+
+  https://www.ncbi.nlm.nih.gov/pubmed/28494263
+
+  */
   var params = {
     'combined': {'costs': [1, 2, 2], 'pMeanings': [24, 8]},
     'conventionalized': {'costs': [1, 2, 2], 'pMeanings': [8, 24]},
@@ -128,6 +174,25 @@ var countIsShort = function(utterances) {
 }
 
 var runExperiment = function(subjParams, displayType, n) {
+  /* Run a subject through the experiment.
+
+
+  Parameters
+  ----------
+  subjParams: dict
+    Subject level params (e.g. alpha, depth, etc.)
+  displayType: string
+    One of 'frequent', 'infrequent'
+  n: int
+    Number of samples from speaker.
+
+  Returns
+  -------
+  int
+    Number of short utterances ('zop')
+
+  */
+
   // Get subject strategy (condition)
   var conditionType = subjParams['conditionType']
   // Get subject alpha
@@ -137,7 +202,7 @@ var runExperiment = function(subjParams, displayType, n) {
   // Get subject attention
   var attention = subjParams['attention']
   var speaker = getSpeakerModel(conditionType, depth)
-  var params = _.merge(getSpeakerParams(conditionType), {'alpha': alpha})
+  var params = _.merge(getConditionParams(conditionType), {'alpha': alpha})
   var meaning = displayType == 'frequent' ? 'zopudon' : 'zopekil'
   var speak = function() {
     return flip(attention) ?
@@ -151,6 +216,14 @@ var runExperiment = function(subjParams, displayType, n) {
 var runSubjectOpts = {'method': 'MCMC', 'samples': 1000, 'kernel': 'MH'}
 // var runSubjectOpts = {'method': 'MCMC', 'samples': 1000, kernel: {HMC: {steps: 10, stepSize: 1}}}
 var runSubject = function(subjId, alpha, depth, conditionType, attention, displayType, n) {
+  /* Return a distribution over a participants use of the short form.
+
+  Returns
+  -------
+  Distr
+    Distribution over number of times short form is used.
+
+  */
   Infer(runSubjectOpts, function() {
     var params = {
       'alpha': alpha,
@@ -167,6 +240,14 @@ var opts = {method: 'MCMC', 'samples': 200,  kernel: 'MH'}
 // var opts = {method: "MCMC", onlyMAP:true,  samples: 200, burn: 100, callbacks: [editor.MCMCProgress()]};
 // var opts = {'method': 'MCMC', 'samples': 1000, kernel: {HMC: {steps: 10, stepSize: 1}}}
 var inferSubjParams = function(datum) {
+  /* Infer parameters for a single subject.
+
+  Returns
+  -------
+  dict
+    Dictionary of subject-level parameters.
+
+  */
   Infer(opts, function() {
     var depth = uniformDraw(['1', '2', '3'])
     var conditionType = categorical({vs: ['combined', 'accuracy', 'time', 'conventionalized'], ps: [10, 10, 10, 1]})
