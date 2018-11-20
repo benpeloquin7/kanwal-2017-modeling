@@ -169,12 +169,9 @@ var opts = {method: 'MCMC', 'samples': 200,  kernel: 'MH'}
 var inferSubjParams = function(datum) {
   Infer(opts, function() {
     var depth = uniformDraw(['1', '2', '3'])
-    var conditionType = uniformDraw(['combined', 
-                                     'accuracy', 
-                                     'time', 
-                                     'conventionalized'])
-    var alpha = uniformDraw(_.range(1, 20))
-    var attention = beta(10, 1)
+    var conditionType = categorical({vs: ['combined', 'accuracy', 'time', 'conventionalized'], ps: [10, 10, 10, 1]})
+    var alpha = uniformDraw(_.range(1, 30))
+    var attention = beta(12, 1)
     observe(runSubject(datum.IP, alpha, depth, conditionType, attention, 'frequent', datum.frequent_n), datum.frequent_cnt)
     observe(runSubject(datum.IP, alpha, depth, conditionType, attention, 'infrequent', datum.infrequent_n), datum.infrequent_cnt)
     return {
@@ -185,7 +182,6 @@ var inferSubjParams = function(datum) {
     }
   })
 }
-
 
 var results = mapData({data: rData}, function(datum) {
 	console.log("Running IP: ", datum.IP)
