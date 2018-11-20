@@ -132,8 +132,9 @@ def create_IP_cnts_df(df_all_combined):
         .reset_index() \
         .groupby(['IP', 'condition']) \
         .apply(add_n) \
-        .rename(
-        columns={'frequent': 'frequent_cnt', 'infrequent': 'infrequent_cnt'})
+        .rename(columns={'frequent': 'frequent_cnt',
+                         'infrequent': 'infrequent_cnt'}) \
+        .query('condition != "neither"')
     return df_short
 
 
@@ -157,7 +158,7 @@ if not os.path.exists(args.out_dir):
 fp_raw_all = os.path.join(args.out_dir, 'preprocessed_all')
 fp_props_all = os.path.join(args.out_dir, 'counts_all')
 df_raw_all = combine_raw_datasets()
-df_all_proportions = create_IP_probs_df(df_raw_all)
+df_all_proportions = create_IP_cnts_df(df_raw_all)
 
 logging.info("Caching {}".format(fp_raw_all))
 df_raw_all.to_csv('{}{}'.format(fp_raw_all, ".csv"))
