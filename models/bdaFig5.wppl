@@ -12,13 +12,37 @@ var litMeaning = function(u, m) {
   return u == 'zop' ? true : u == m
 }
 
+var cost = function(u, params) {
+  var costs = {
+    'zop': params['costs'][0],
+    'zopudon': params['costs'][1],
+    'zopekil': params['costs'][2]
+  }
+  return costs[u]
+}
+
+var S0 = function(m, params) {
+  /* Literal speaker only considers costs.
+
+  Example params:
+
+    {alpha: 1, 'pMeanings': [24, 8], 'costs': [1, 1, 1]}
+
+  */
+  Infer({method: 'enumerate'}, function() {
+    var u = utterancesPrior()
+    factor(params['alpha'] * -cost(u, params))
+    return u
+  })
+}
+
 var L0 = cache(function(u, params) {
   /* Literal listener
 
   Recursion base-case, reasons about literal semantics.
 
   */
-	Infer({method: 'enumerate'}, function() {
+  Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: params['pMeanings']})
       condition(litMeaning(u, m))
       return m
@@ -34,7 +58,7 @@ var S1 = cache(function(m, params) {
   informativity w.r.t to the listener.
 
   */
-	Infer({method: 'enumerate'}, function()  {
+  Infer({method: 'enumerate'}, function()  {
       var u = utterancesPrior()
       var L = L0(u, params)
       factor(params['alpha'] * (L.score(m) - cost(u, params)))
@@ -51,7 +75,7 @@ var L1 = cache(function(u, params) {
   informativity w.r.t to the listener.
 
   */
-	Infer({method: 'enumerate'}, function() {
+  Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: params['pMeanings']})
       var S = S1(m, params)
       factor(S.score(u))
@@ -60,7 +84,7 @@ var L1 = cache(function(u, params) {
 })
 
 var S2 = cache(function(m, params) {
-	Infer({method: 'enumerate'}, function()  {
+  Infer({method: 'enumerate'}, function()  {
       var u = utterancesPrior()
       var L = L1(u, params)
       factor(params['alpha'] * (L.score(m) - cost(u, params)))
@@ -69,7 +93,7 @@ var S2 = cache(function(m, params) {
 })
 
 var L2 = cache(function(u, params) {
-	Infer({method: 'enumerate'}, function() {
+  Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: params['pMeanings']})
       var S = S2(m, params)
       factor(S.score(u))
@@ -78,7 +102,7 @@ var L2 = cache(function(u, params) {
 })
 
 var S3 = cache(function(m, params) {
-	Infer({method: 'enumerate'}, function()  {
+  Infer({method: 'enumerate'}, function()  {
       var u = utterancesPrior()
       var L = L2(u, params)
       factor(params['alpha'] * (L.score(m) - cost(u, params)))
@@ -119,11 +143,7 @@ var getConditionParams = cache(function(conditionType) {
   return params[conditionType]
 })
 
-var getSubjectParams = function(IP) {
-  var data = filter(function(x) {x['IP'] == IP}, particpantParams)
-  console.log(data)
-  return data
-}
+
 
 var getSpeakerAndParams = function(params) {
   var alpha = params['alpha']
@@ -136,19 +156,22 @@ var getSpeakerAndParams = function(params) {
 }
 
 var participantData = {"107.161.163.8": [{"infrequent": 1}, {"infrequent": 1, "frequent": 1}, {"infrequent": 1, "frequent": 2}, {"infrequent": 1, "frequent": 3}, {"infrequent": 2, "frequent": 3}, {"infrequent": 2, "frequent": 4}, {"infrequent": 2, "frequent": 5}, {"infrequent": 3, "frequent": 5}, {"infrequent": 4, "frequent": 5}, {"infrequent": 4, "frequent": 6}, {"infrequent": 4, "frequent": 7}, {"infrequent": 5, "frequent": 7}, {"infrequent": 5, "frequent": 8}, {"infrequent": 5, "frequent": 9}, {"infrequent": 5, "frequent": 10}, {"infrequent": 5, "frequent": 11}, {"infrequent": 5, "frequent": 12}, {"infrequent": 5, "frequent": 13}, {"infrequent": 5, "frequent": 14}, {"infrequent": 6, "frequent": 14}, {"infrequent": 6, "frequent": 15}, {"infrequent": 6, "frequent": 16}, {"infrequent": 7, "frequent": 16}, {"infrequent": 7, "frequent": 17}, {"infrequent": 7, "frequent": 18}, {"infrequent": 7, "frequent": 19}, {"infrequent": 7, "frequent": 20}, {"infrequent": 7, "frequent": 21}, {"infrequent": 7, "frequent": 22}, {"infrequent": 7, "frequent": 23}, {"infrequent": 7, "frequent": 24}], "74.87.33.130": [{"frequent": 1}, {"infrequent": 1, "frequent": 1}, {"infrequent": 1, "frequent": 2}, {"infrequent": 2, "frequent": 2}, {"infrequent": 2, "frequent": 3}, {"infrequent": 3, "frequent": 3}, {"infrequent": 3, "frequent": 4}, {"infrequent": 3, "frequent": 5}, {"infrequent": 3, "frequent": 6}, {"infrequent": 3, "frequent": 7}, {"infrequent": 4, "frequent": 7}, {"infrequent": 4, "frequent": 8}, {"infrequent": 4, "frequent": 9}, {"infrequent": 4, "frequent": 10}, {"infrequent": 4, "frequent": 11}, {"infrequent": 5, "frequent": 11}, {"infrequent": 5, "frequent": 12}, {"infrequent": 5, "frequent": 13}, {"infrequent": 5, "frequent": 14}, {"infrequent": 5, "frequent": 15}, {"infrequent": 5, "frequent": 16}, {"infrequent": 5, "frequent": 17}, {"infrequent": 5, "frequent": 18}, {"infrequent": 5, "frequent": 19}, {"infrequent": 5, "frequent": 20}, {"infrequent": 6, "frequent": 20}, {"infrequent": 6, "frequent": 21}, {"infrequent": 7, "frequent": 21}, {"infrequent": 7, "frequent": 22}, {"infrequent": 7, "frequent": 23}, {"infrequent": 7, "frequent": 24}], "98.169.35.68": [{"frequent": 1}, {"frequent": 2}, {"frequent": 3}, {"infrequent": 1, "frequent": 3}, {"infrequent": 1, "frequent": 4}, {"infrequent": 1, "frequent": 5}, {"infrequent": 2, "frequent": 5}, {"infrequent": 2, "frequent": 6}, {"infrequent": 2, "frequent": 7}, {"infrequent": 3, "frequent": 7}, {"infrequent": 4, "frequent": 7}, {"infrequent": 4, "frequent": 8}, {"infrequent": 4, "frequent": 9}, {"infrequent": 4, "frequent": 10}, {"infrequent": 4, "frequent": 11}, {"infrequent": 5, "frequent": 11}, {"infrequent": 5, "frequent": 12}, {"infrequent": 5, "frequent": 13}, {"infrequent": 5, "frequent": 14}, {"infrequent": 5, "frequent": 15}, {"infrequent": 5, "frequent": 16}, {"infrequent": 5, "frequent": 17}, {"infrequent": 5, "frequent": 18}, {"infrequent": 6, "frequent": 18}, {"infrequent": 6, "frequent": 19}, {"infrequent": 6, "frequent": 20}, {"infrequent": 6, "frequent": 21}, {"infrequent": 6, "frequent": 22}, {"infrequent": 7, "frequent": 22}, {"infrequent": 7, "frequent": 23}, {"infrequent": 8, "frequent": 23}], "59.98.251.98": [{"frequent": 1}, {"infrequent": 1, "frequent": 1}, {"infrequent": 1, "frequent": 2}, {"infrequent": 1, "frequent": 3}, {"infrequent": 1, "frequent": 4}, {"infrequent": 2, "frequent": 4}, {"infrequent": 2, "frequent": 5}, {"infrequent": 2, "frequent": 6}, {"infrequent": 3, "frequent": 6}, {"infrequent": 3, "frequent": 7}, {"infrequent": 3, "frequent": 8}, {"infrequent": 3, "frequent": 9}, {"infrequent": 3, "frequent": 10}, {"infrequent": 3, "frequent": 11}, {"infrequent": 3, "frequent": 12}, {"infrequent": 4, "frequent": 12}, {"infrequent": 5, "frequent": 12}, {"infrequent": 5, "frequent": 13}, {"infrequent": 5, "frequent": 14}, {"infrequent": 5, "frequent": 15}, {"infrequent": 5, "frequent": 16}, {"infrequent": 5, "frequent": 17}, {"infrequent": 5, "frequent": 18}, {"infrequent": 5, "frequent": 19}, {"infrequent": 5, "frequent": 20}, {"infrequent": 5, "frequent": 21}, {"infrequent": 6, "frequent": 21}, {"infrequent": 6, "frequent": 22}, {"infrequent": 6, "frequent": 23}, {"infrequent": 7, "frequent": 23}, {"infrequent": 7, "frequent": 24}], "100.2.122.157": [{"frequent": 1}, {"frequent": 2}, {"frequent": 3}, {"frequent": 4}, {"infrequent": 1, "frequent": 4}, {"infrequent": 1, "frequent": 5}, {"infrequent": 1, "frequent": 6}, {"infrequent": 1, "frequent": 7}, {"infrequent": 1, "frequent": 8}, {"infrequent": 1, "frequent": 9}, {"infrequent": 2, "frequent": 9}, {"infrequent": 3, "frequent": 9}, {"infrequent": 3, "frequent": 10}, {"infrequent": 4, "frequent": 10}, {"infrequent": 4, "frequent": 11}, {"infrequent": 4, "frequent": 12}, {"infrequent": 4, "frequent": 13}, {"infrequent": 4, "frequent": 14}, {"infrequent": 4, "frequent": 15}, {"infrequent": 5, "frequent": 15}, {"infrequent": 5, "frequent": 16}, {"infrequent": 6, "frequent": 16}, {"infrequent": 6, "frequent": 17}, {"infrequent": 6, "frequent": 18}, {"infrequent": 7, "frequent": 18}, {"infrequent": 7, "frequent": 19}, {"infrequent": 7, "frequent": 20}, {"infrequent": 7, "frequent": 21}, {"infrequent": 7, "frequent": 22}, {"infrequent": 8, "frequent": 22}, {"infrequent": 8, "frequent": 23}]}
-var particpantParams = [{"IP":"100.10.40.83","alpha":25,"depth":1,"inferredCondition":"combined"},{"IP":"100.2.122.157","alpha":16,"depth":2,"inferredCondition":"combined"},{"IP":"108.196.136.202","alpha":7,"depth":1,"inferredCondition":"conventionalized"}]
+var participantParams = [{"IP":"100.10.40.83","alpha":25,"depth":1,"inferredCondition":"combined"},{"IP":"100.2.122.157","alpha":16,"depth":2,"inferredCondition":"combined"},{"IP":"108.196.136.202","alpha":7,"depth":1,"inferredCondition":"conventionalized"},{"IP":"74.136.96.163","alpha":9,"depth":2,"inferredCondition":"time"},{"IP":"74.74.166.82","alpha":16,"depth":1,"inferredCondition":"accuracy"},{"IP":"74.87.33.130","alpha":10,"depth":3,"inferredCondition":"combined"},{"IP":"75.134.222.94","alpha":2,"depth":2,"inferredCondition":"conventionalized"},{"IP":"75.168.190.50","alpha":3,"depth":3,"inferredCondition":"combined"},{"IP":"75.5.249.84","alpha":9,"depth":3,"inferredCondition":"time"},{"IP":"75.83.166.148","alpha":23,"depth":2,"inferredCondition":"combined"},{"IP":"76.107.196.14","alpha":18,"depth":1,"inferredCondition":"accuracy"},{"IP":"108.210.65.252","alpha":18,"depth":1,"inferredCondition":"accuracy"},{"IP":"76.167.44.190","alpha":13,"depth":3,"inferredCondition":"conventionalized"},{"IP":"79.126.171.64","alpha":12,"depth":3,"inferredCondition":"time"},{"IP":"80.101.212.2","alpha":9,"depth":2,"inferredCondition":"accuracy"},{"IP":"96.60.207.27","alpha":12,"depth":2,"inferredCondition":"time"},{"IP":"98.169.35.68","alpha":2,"depth":1,"inferredCondition":"time"},{"IP":"98.234.65.43","alpha":12,"depth":2,"inferredCondition":"time"},{"IP":"98.251.96.30","alpha":8,"depth":1,"inferredCondition":"accuracy"},{"IP":"108.23.68.36","alpha":23,"depth":1,"inferredCondition":"accuracy"},{"IP":"99.195.31.91","alpha":23,"depth":1,"inferredCondition":"accuracy"},{"IP":"115.241.81.138","alpha":17,"depth":1,"inferredCondition":"accuracy"},{"IP":"115.242.129.102","alpha":20,"depth":1,"inferredCondition":"accuracy"},{"IP":"115.98.55.114","alpha":27,"depth":1,"inferredCondition":"accuracy"},{"IP":"115.99.18.32","alpha":6,"depth":1,"inferredCondition":"accuracy"},{"IP":"117.213.33.129","alpha":29,"depth":1,"inferredCondition":"accuracy"},{"IP":"104.11.62.66","alpha":24,"depth":1,"inferredCondition":"accuracy"},{"IP":"117.229.19.52","alpha":15,"depth":2,"inferredCondition":"conventionalized"},{"IP":"122.161.26.31","alpha":1,"depth":1,"inferredCondition":"time"},{"IP":"140.141.208.86","alpha":1,"depth":3,"inferredCondition":"time"},{"IP":"142.196.192.44","alpha":18,"depth":1,"inferredCondition":"accuracy"},{"IP":"162.239.52.23","alpha":25,"depth":2,"inferredCondition":"combined"},{"IP":"163.47.15.206","alpha":10,"depth":1,"inferredCondition":"accuracy"},{"IP":"172.91.192.214","alpha":23,"depth":2,"inferredCondition":"combined"},{"IP":"173.68.90.30","alpha":14,"depth":1,"inferredCondition":"accuracy"},{"IP":"173.78.132.154","alpha":11,"depth":1,"inferredCondition":"time"},{"IP":"104.174.222.43","alpha":16,"depth":1,"inferredCondition":"accuracy"},{"IP":"174.124.100.111","alpha":10,"depth":1,"inferredCondition":"combined"},{"IP":"174.140.64.232","alpha":20,"depth":1,"inferredCondition":"accuracy"},{"IP":"174.55.10.72","alpha":17,"depth":1,"inferredCondition":"accuracy"},{"IP":"174.71.79.180","alpha":15,"depth":2,"inferredCondition":"combined"},{"IP":"182.65.31.144","alpha":13,"depth":3,"inferredCondition":"combined"},{"IP":"183.82.201.213","alpha":29,"depth":2,"inferredCondition":"accuracy"},{"IP":"184.155.134.46","alpha":2,"depth":1,"inferredCondition":"time"},{"IP":"190.40.243.234","alpha":20,"depth":2,"inferredCondition":"time"},{"IP":"197.164.51.196","alpha":5,"depth":1,"inferredCondition":"accuracy"},{"IP":"199.66.168.75","alpha":25,"depth":1,"inferredCondition":"accuracy"},{"IP":"104.175.214.163","alpha":25,"depth":1,"inferredCondition":"accuracy"},{"IP":"200.106.22.194","alpha":14,"depth":2,"inferredCondition":"accuracy"},{"IP":"207.119.81.116","alpha":12,"depth":1,"inferredCondition":"accuracy"},{"IP":"209.242.152.162","alpha":18,"depth":1,"inferredCondition":"accuracy"},{"IP":"216.26.183.5","alpha":25,"depth":1,"inferredCondition":"accuracy"},{"IP":"24.113.49.186","alpha":14,"depth":3,"inferredCondition":"accuracy"},{"IP":"24.167.83.155","alpha":19,"depth":1,"inferredCondition":"accuracy"},{"IP":"24.191.98.160","alpha":19,"depth":1,"inferredCondition":"accuracy"},{"IP":"104.57.161.213","alpha":27,"depth":1,"inferredCondition":"time"},{"IP":"24.20.229.200","alpha":24,"depth":1,"inferredCondition":"combined"},{"IP":"24.253.233.194","alpha":11,"depth":3,"inferredCondition":"combined"},{"IP":"24.33.78.134","alpha":12,"depth":3,"inferredCondition":"combined"},{"IP":"24.56.254.22","alpha":17,"depth":1,"inferredCondition":"accuracy"},{"IP":"24.74.13.244","alpha":1,"depth":3,"inferredCondition":"combined"},{"IP":"38.88.53.50","alpha":28,"depth":1,"inferredCondition":"accuracy"},{"IP":"49.206.202.131","alpha":16,"depth":3,"inferredCondition":"combined"},{"IP":"50.150.62.48","alpha":4,"depth":2,"inferredCondition":"combined"},{"IP":"50.153.162.232","alpha":27,"depth":3,"inferredCondition":"accuracy"},{"IP":"50.153.191.59","alpha":24,"depth":1,"inferredCondition":"accuracy"},{"IP":"107.13.61.217","alpha":19,"depth":1,"inferredCondition":"accuracy"},{"IP":"50.155.75.81","alpha":27,"depth":3,"inferredCondition":"accuracy"},{"IP":"50.157.182.233","alpha":25,"depth":1,"inferredCondition":"accuracy"},{"IP":"50.51.102.96","alpha":12,"depth":2,"inferredCondition":"combined"},{"IP":"59.93.15.89","alpha":14,"depth":1,"inferredCondition":"combined"},{"IP":"59.98.251.98","alpha":6,"depth":2,"inferredCondition":"combined"},{"IP":"65.183.140.246","alpha":2,"depth":1,"inferredCondition":"combined"},{"IP":"65.28.161.177","alpha":24,"depth":3,"inferredCondition":"time"},{"IP":"66.56.8.213","alpha":24,"depth":3,"inferredCondition":"accuracy"},{"IP":"107.161.163.8","alpha":13,"depth":1,"inferredCondition":"accuracy"},{"IP":"67.168.183.190","alpha":27,"depth":1,"inferredCondition":"accuracy"},{"IP":"67.187.0.173","alpha":10,"depth":3,"inferredCondition":"time"},{"IP":"67.44.208.28","alpha":1,"depth":1,"inferredCondition":"combined"},{"IP":"67.85.42.18","alpha":17,"depth":1,"inferredCondition":"combined"},{"IP":"68.114.220.220","alpha":16,"depth":1,"inferredCondition":"accuracy"},{"IP":"68.184.74.170","alpha":1,"depth":1,"inferredCondition":"combined"},{"IP":"68.194.164.153","alpha":10,"depth":1,"inferredCondition":"accuracy"},{"IP":"107.2.1.30","alpha":25,"depth":1,"inferredCondition":"accuracy"},{"IP":"68.204.111.135","alpha":11,"depth":1,"inferredCondition":"accuracy"},{"IP":"68.63.39.20","alpha":4,"depth":2,"inferredCondition":"accuracy"},{"IP":"69.136.182.208","alpha":16,"depth":1,"inferredCondition":"accuracy"},{"IP":"69.65.45.56","alpha":15,"depth":1,"inferredCondition":"combined"},{"IP":"69.66.162.73","alpha":10,"depth":1,"inferredCondition":"accuracy"},{"IP":"71.112.135.232","alpha":16,"depth":1,"inferredCondition":"accuracy"},{"IP":"71.196.89.171","alpha":5,"depth":1,"inferredCondition":"accuracy"},{"IP":"71.56.37.206","alpha":27,"depth":1,"inferredCondition":"accuracy"},{"IP":"71.71.193.230","alpha":5,"depth":3,"inferredCondition":"accuracy"},{"IP":"71.90.149.208","alpha":21,"depth":3,"inferredCondition":"time"},{"IP":"72.135.113.249","alpha":11,"depth":2,"inferredCondition":"time"},{"IP":"72.182.90.103","alpha":14,"depth":3,"inferredCondition":"accuracy"},{"IP":"72.9.28.126","alpha":25,"depth":1,"inferredCondition":"accuracy"},{"IP":"73.11.80.136","alpha":9,"depth":2,"inferredCondition":"accuracy"},{"IP":"73.173.175.17","alpha":27,"depth":1,"inferredCondition":"accuracy"},{"IP":"73.197.156.172","alpha":3,"depth":2,"inferredCondition":"conventionalized"},{"IP":"73.246.28.166","alpha":28,"depth":2,"inferredCondition":"conventionalized"},{"IP":"73.42.71.240","alpha":9,"depth":1,"inferredCondition":"accuracy"},{"IP":"73.51.84.163","alpha":25,"depth":1,"inferredCondition":"accuracy"}]
 var IPs = _.keys(participantData)
+
+var getSubjectParams = function(IP) {
+  var data = filter(function(x) {x['IP'] == IP}, participantParams)[0]
+  return data
+}
 
 mapData({data: IPs}, function(IP) {
   var currentParticipantData = participantData[IP]
   var speakerParams = getSubjectParams(IP)
-//   var speaker = getSpeakerAndParams(speakerParams)[0]
-//   var params = getSpeakerAndParams(speakerParams)[1]
-//   print(params['alpha'])
-//   print(params['depth'])
-//   mapData({data: currentParticipantData}, function(datum) {
-//     var frequentCnt = datum.frequent ? datum.frequent : 1
-//     var infrequentCnt = datum.infrequent ? datum.infrequent : 1
-//     return Math.exp(speaker('zopudon', {'pMeanings': [frequentCnt, infrequentCnt], 'alpha': params['alpha']}).score('zop'))
-//   })
+  var speaker = getSpeakerAndParams(speakerParams)[0]
+  var params = getSpeakerAndParams(speakerParams)[1]
+  mapData({data: currentParticipantData}, function(datum) {
+    var frequentCnt = datum.frequent ? datum.frequent : 1
+    var infrequentCnt = datum.infrequent ? datum.infrequent : 1
+    return Math.exp(speaker('zopudon', {'pMeanings': [frequentCnt, infrequentCnt], 'alpha': params['alpha']}).score('zop'))
+  })
 })
