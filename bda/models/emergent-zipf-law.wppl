@@ -1,0 +1,100 @@
+var utterances = ['x', 'xA', 'xB']
+var priorUtterances = function() {
+  return categorical({vs: utterances, ps:[0.1, 0.45, 0.45]})
+}
+var meanings = ['A', 'B']
+var priorMeanings = function() {
+  return categorical({vs: meanings, ps: [10, 15]})
+}
+var semantics = function(u, m) {
+  if (u == 'x') {
+    return true
+  } else {
+    return u.split('')[1] == m
+  }
+}
+
+var cost = function(u) {
+  return u.length
+}
+
+var getJointFromData = function(data) {
+  var formJoint = function() {
+    var x = categorical({vs: data}) 
+    return {'u': x[0], 'm': x[1]}
+  }
+  return Infer(formJoint)
+}
+
+var getMeaningPrior = function(data) {
+  var jointDistr = getJointFromData(data)
+  return marginalize(jointDistr, function(x) {
+    return x.m
+  })
+}
+
+var getUtteranceDistr = function(data) {
+  var jointDistr = getJointFromData(data)
+  return marginalize(jointDistr, function(x) {
+    return x.u
+  })
+}
+
+
+var buildSpeaker = function(data) {
+  var meaningPrior = getMeaningPrior(data)
+  var utterancePrior = getUtteranceDistr(data)
+  // Listener
+  var L = function(u) {
+    Infer({
+      model() {
+        var m = sample(meaningPrior)
+        factor(semantics(u, m) ? 0 : -Infinity)
+        return m
+      }
+    })
+  }
+  // Speaker
+  var S = function(m) {
+    Infer({
+      model() {
+        var u = priorUtterances()
+        factor(1 * (L(u).score(m) - cost(u)))
+        return u
+      }
+    })
+  }
+  return S
+}
+
+var mergeData = function(x, y) {
+  return zip(x, y)
+}
+
+var runOneGeneration = function(data) {
+  var empSpeaker = buildSpeaker(data)
+  var meaningsData = repeat(10, priorMeanings)
+  var utterancesData = map(function(m) {
+    return sample(empSpeaker(m))
+  }, meaningsData)
+  return zip(utterancesData, meaningsData)
+}
+
+
+var runKGenerations = function(data, k) {
+  if (k == 0) {
+    return data
+  } else {
+    var newData = runOneGeneration(data)
+    return newData.concat(runKGenerations(newData, k-1))
+//     var mergeData = runKGenerations(newData, k-1)
+//     return _.merge(newData, mergeData)
+  }
+}
+
+var firstData = [['xA', 'A'], ['xA', 'A'], ['xB', 'B'], ['xA', 'A']]
+// firstData.concat([runOneGeneration(firstData)])
+// firstData.concat([['a', 'Xa']])
+
+runKGenerations(firstData, 20)
+// _.concat.apply([], )

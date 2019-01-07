@@ -1,12 +1,22 @@
+# Files / Dirs
+data/
+json/
+paper/figs/
+materials/
+
 # Misc filetypes/directories
+*.DS_Store
+*.Rproj.user
+*.Rhistory
+*.bib
+*.csl
+*.csv
 *.json
 *.pdf
 *.png
-*.csv
-*.Rproj.user
-*.Rhistory
-*.DS_Store
 *.pyc
+*.tex
+*.sty
 
 # Jupter notebooks
 *.ipynb_checkpoints/

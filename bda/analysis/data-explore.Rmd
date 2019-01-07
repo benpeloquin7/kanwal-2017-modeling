@@ -6,7 +6,9 @@ output: html_document
 ---
 
 ```{r libs}
+rm(list=ls())
 library(ggthemes)
+library(jsonlite)
 library(tidyverse)
 ```
 
@@ -15,8 +17,69 @@ options(stringsAsFactors = FALSE)
 ```
 
 
+
+# Reproduce Fig 5.
+
+```{r}
+f_all_data <- "../data/df_agg.csv"
+dfAll <- read.csv(f_all_data)
+```
+
+```{r}
+dfAll %>%
+  filter(condition=='combined') %>%
+  select(IP, condition, label, conditional_trial_num, label_type, display_type) %>%
+  group_by(conditional_trial_num, display_type)
+  
+```
+
+
+```{r}
+dfAll %>%
+  filter(condition=='combined') %>%
+  select(IP, condition, label, conditional_trial_num, label_type, display_type) %>%
+  mutate(wordLength=nchar(label)) %>%
+  group_by(conditional_trial_num, display_type) %>%
+  summarise(n=n(),
+            avgLen=mean(wordLength),
+            ci_high=avgLen+1.96*sd(wordLength)/sqrt(n),
+            ci_low=avgLen-1.96*sd(wordLength)/sqrt(n)) %>%
+  ggplot(aes(x=conditional_trial_num, y=avgLen, col=display_type)) +
+    geom_point() +
+    geom_line() +
+    geom_errorbar(aes(ymax=ci_high, ymin=ci_low), col='grey', alpha=0.7, width=0.5) +
+    ylim(3, 7) +
+    theme_few() +
+    ggtitle("Reproducing Fig 5.")
+```
+
+
+```{r}
+dfPropData <- dfAll %>%
+  filter(condition=='combined') %>%
+  select(IP, condition, label, conditional_trial_num, label_type, display_type) %>%
+  mutate(isShortLabel=label_type=='short') %>%
+  group_by(conditional_trial_num, display_type) %>%
+  summarise(n=n(),
+            propShort=mean(isShortLabel),
+            ci_high=propShort+1.96*sqrt(propShort*(1-propShort)/n),
+            ci_low=propShort-1.96*sqrt(propShort*(1-propShort)/n))
+
+dfPropData %>%
+  ggplot(aes(x=conditional_trial_num, y=propShort, col=display_type)) +
+    geom_errorbar(aes(ymax=ci_high, ymin=ci_low)) +
+    geom_line() +
+    ylim(0, 1) +
+    theme_few() +
+    ggtitle("Proportion of times using the short form over repetition.")
+
+# write.csv(dfPropData, "../data/temporalDynamicsData.csv")
+```
+
+
+
 ```{r data}
-df <- read.csv("../data/df_agg.csv")
+df <- read.csv("../data/d _agg.csv")
 ```
 
 ```{r add-match-label}

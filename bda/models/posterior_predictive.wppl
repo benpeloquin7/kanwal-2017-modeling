@@ -1,0 +1,171 @@
+/* Get posterior predictives.
+
+*/
+
+var geometric = function(p) {
+  return flip(p) ? geometric() + 1 : 0;
+}
+
+var Geometric = function(p) {
+  Infer({method: 'enumerate', maxExecutions: 10}, function() {
+    geometric(p)
+  })
+}
+
+var utterances = ['zop', 'zopudon', 'zopekil']
+var meanings = ['zopudon', 'zopekil']
+
+var S0 = function(m, params) {
+  Infer({method: 'enumerate'}, function() {
+    var u = categorical({vs: utterances, ps: params['pUtterances']})
+    return u
+  })
+}
+
+
+var litMeaning = cache(function(u, m) {
+  return u == 'zop' ? true : u == m
+})
+
+var L0 = cache(function(u, params) {
+	Infer({method: 'enumerate'}, function() {
+      var m = categorical({vs: meanings, ps: params['pMeanings']})
+      condition(litMeaning(u, m))
+      return m
+    })
+})
+
+var S1 = cache(function(m, params) {
+	Infer({method: 'enumerate'}, function()  {
+      var u = categorical({vs: utterances, ps: params['pUtterances']})
+      var L = L0(u, params)
+      factor(params['alpha'] * L.score(m))
+      return u
+    })
+})
+
+var L1 = cache(function(u, params) {
+	Infer({method: 'enumerate'}, function() {
+      var m = categorical({vs: meanings, ps: params['pMeanings']})
+      var S = S1(m, params)
+      factor(S.score(u))
+      return m
+    })
+})
+
+var S2 = cache(function(m, params) {
+	Infer({method: 'enumerate'}, function()  {
+      var u = categorical({vs: utterances, ps: params['pUtterances']})
+      var L = L1(u, params)
+      factor(params['alpha'] * L.score(m))
+      return u
+    })
+})
+
+var getSubjParams = mem(function(subjId) {
+  return {
+    'conditionType': uniformDraw(['combined', 'accuracy', 'time', 'neither']),
+    'alpha': uniformDraw(_.range(1, 10)),
+    'attention': beta(5, 1)
+  }
+})
+
+var getSpeaker = cache(function(conditionType) {
+  var speakers = {
+    'combined': [S2, {'pUtterances': [4, 1, 1], 'pMeanings': [24, 8]}],
+    'conventionalized': [S2, {'pUtterances': [4, 1, 1], 'pMeanings': [8, 24]}],
+    'accuracy': [S2, {'pUtterances': [1, 1, 1], 'pMeanings': [24, 8]}],
+    'time': [S0, {'pUtterances': [4, 1, 1], 'pMeanings': [24, 8]}],
+    'neither': [S0, {'pUtterances': [1, 1, 1], 'pMeanings': [24, 8]}]
+  }
+  return speakers[conditionType]
+})
+
+var countIsShort = function(utterances) {
+  return sum(map(function(x) {return x == 'zop'}, utterances))
+}
+
+var runExperiment = function(subjParams, displayType, n) {
+  // Get subject strategy (condition)
+  var conditionType = subjParams['conditionType']
+  // Get subject alpha
+  var alpha = subjParams['alpha']
+  // Get subject attention
+  var attention = subjParams['attention']
+  var speaker = getSpeaker(conditionType)[0]
+  var params = _.merge(getSpeaker(conditionType)[1], {'alpha': alpha})
+  var meaning = displayType == 'frequent' ? 'zopudon' : 'zopekil'
+  var speak = function() {
+    return flip(attention) ?
+      sample(speaker(meaning, params)) : 
+      categorical({vs: utterances, ps: params['pUtterances']}) // Random choice of utterance
+  }
+  var utterances = repeat(n, speak)
+  return countIsShort(utterances)
+}
+
+var runSubjectOpts = {'method': 'MCMC', 'samples': 1000}
+var runSubject = function(subjId, alpha, conditionType, attention, displayType, n) {
+  Infer(runSubjectOpts, function() {
+    var params = {
+      'alpha': alpha,
+      'conditionType': conditionType,
+      'attention': attention
+    }
+    return runExperiment(params, displayType, n)
+  })
+}
+
+// var opts = {method: 'MCMC', 'samples': 100, kernel: {HMC: {steps: 2, stepSize: 0.5}}, callbacks: [editor.MCMCProgress()]}
+// var opts = {method: 'MCMC', 'samples': 1000, callbacks: [editor.MCMCProgress()]}
+// var opts = {method: "MCMC", onlyMAP:true,  samples: 100, burn: 20, callbacks: [editor.MCMCProgress()]};
+var opts = {method: "MCMC", onlyMAP:true,  samples: 100, burn: 20};
+var inferSubjParams = function(datum) {
+  Infer(opts, function() {
+    var conditionType = uniformDraw(['combined', 
+                                     'accuracy', 
+                                     'time', 
+                                     'neither',
+                                     'conventionalized'])
+    var alpha = uniformDraw(_.range(1, 10))
+    var attention = beta(5, 1)
+    observe(runSubject(datum.IP, alpha, conditionType, attention, 'frequent', datum.frequent_n), datum.frequent_cnt)
+    observe(runSubject(datum.IP, alpha, conditionType, attention, 'infrequent', datum.infrequent_n), datum.infrequent_cnt)
+    return {
+      'inferredAlpha': alpha, 
+      'inferredCondition': conditionType, 
+      'inferredAttention': attention
+    }
+  })
+}
+
+
+mapData({data: rData}, function(datum) {
+	console.log("Running IP: ", datum.IP)
+	var inferredSubjParams = inferSubjParams(datum)
+	var alpha = sample(marginalize(inferredSubjParams, function(x) {
+		return x['inferredAlpha']
+	}))
+	var inferredCondition = sample(marginalize(inferredSubjParams, function(x) {
+		return x['inferredCondition']
+	}))
+	var attention = marginalize(inferredSubjParams, function(x) {
+		return x['inferredAttention']
+	})  
+	var inferredAttention = expectation(attention)
+
+	var subjParams = {
+
+	}
+	var result = {
+		'IP': datum.IP,
+	    'alpha': alpha,
+	    'inferredCondition': inferredCondition,
+	    'inferredAttention': inferredAttention,
+	    'actualCondition': datum.condition,
+	    // subjId, alpha, conditionType, attention, displayType, n
+	    'posteriorPredictiveFrequent': expectation(runSubject(datum.IP, alpha, inferredCondition, inferredAttention, 'frequent' datum.frequent_n)),
+	    'posteriorPredictiveInFrequent': expectation(runSubject(datum.IP, alpha, inferredCondition, inferredAttention, 'infrequent' datum.frequent_n))
+	}
+  	return result
+})

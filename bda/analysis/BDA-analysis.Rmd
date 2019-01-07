@@ -91,41 +91,42 @@ Three conditions of interest:
 Note: this analysis includes 85% of participants as I'm having trouble modeling what appears to be fairly random behaviors... See `analysis.ipynb` for more information.
 ```{r getModelableData}
 # Hueristic modelable data
-f_modelable_data <- "../modelable-data-20180330.csv"
+f_modelable_data <- "../data/modelable-data-20180330.csv"
 dfModelable <- read.csv(f_modelable_data)
 
 # All data
-f_all_data <- "../kanwal-preprocessed.csv"
+f_all_data <- "../data/kanwal-preprocessed.csv"
 dfAll <- read.csv(f_all_data) %>%
   mutate(frequent=round(frequent, 2),
          infrequent=round(infrequent, 2))
 ```
 
 ```{r setup-bda-model}
-f_bda_model <- "../kanwal-BDA-20180330.wppl"
+f_bda_model <- "../models/kanwal-BDA-20180330.wppl"
 model_bda <- getModelFile(f_bda_model)
 bda_data <- head(dfModelable)
 nrow(dfModelable)
 
 problemIPs <- c('70.198.5.150', 
-                '117.217.210.9', 
+                '117.217.210.9',   # this ones the killer
                 '65.183.140.246', 
                 '24.253.233.194', 
                 '24.20.229.200', 
-                '108.196.136.202',
+                '108.196.136.202',  # this ones not bad
                 '122.161.26.31')
 # 24.74.13.244 only after 10000 attempts
 # 50.153.162.232
 # 
 # but worked on second time
-dfAll2 <- dfAll %>% filter(!(IP %in% problemIPs))
+# dfAll2 <- dfAll %>% filter(!(IP %in% problemIPs))
+dfAll2 <- dfAll %>% filter(IP %in% problemIPs)
 ```
 
 Note: slow running.
 ```{r run-bda-model}
-# pt <- proc.time()
-# df_bda <- rwebppl::webppl(model_bda, data=dfAll2, data_var='rData')
-# et <- proc.time() - pt
+pt <- proc.time()
+df_bda <- rwebppl::webppl(model_bda, data=dfAll2, data_var='rData')
+et <- proc.time() - pt
 # write.csv(df_bda, "bda-tuned-params-20180303.csv")
 ```
 

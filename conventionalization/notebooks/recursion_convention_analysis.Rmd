@@ -1,0 +1,41 @@
+---
+title: "recursion_convention"
+author: "Ben"
+date: "12/3/2018"
+output: html_document
+---
+
+```{r library}
+library(tidyverse)
+library(ggthemes)
+```
+
+```{r}
+
+df <- read.csv(file.path(getwd(), "convention_recursion.csv"))
+df <- df %>%
+  select(-c("X"))
+df <- df[!duplicated(df), ]
+```
+
+```{r}
+df_optimal <- df %>%
+  filter(lang_id == "0 4 8", k==1)
+distFromOptimalFn <- function(entry, pr) {
+  optimal <- df_optimal[[entry]]
+  return(pr - optimal)
+}
+
+
+df %>%
+  gather(entry, pr, -c(k, lang_id)) %>%
+  rowwise() %>%
+  mutate(distFromOptimal=distFromOptimalFn(entry, pr)) %>%
+  ggplot(aes(x=k, y=distFromOptimal, col=entry)) +
+    geom_line() +
+    facet_wrap(~lang_id, ncol=5) +
+    theme_few()
+```
+
+
+

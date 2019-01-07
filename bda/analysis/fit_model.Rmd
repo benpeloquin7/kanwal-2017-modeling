@@ -1,0 +1,220 @@
+---
+title: "run_model_fitting"
+author: "Ben"
+date: "11/16/2018"
+output: html_document
+---
+
+```{r libraries}
+library(ggplot2)
+library(ggthemes)
+library(rwebppl)
+library(tidyverse)
+```
+
+```{r}
+# getModelFile()
+# ==============
+# Return a model string from a .wppl file
+#
+# Parameters
+# ----------
+# modelFile: str
+#  File path str
+# 
+# Returns
+# -------
+# str
+#    Model str.
+#
+getModelFile <- function(modelFile) {
+  readChar(modelFile, file.info(modelFile)$size)
+}
+```
+
+
+```{r}
+# All data
+f_all_data <- "../data/counts_all.csv"
+dfAll <- read.csv(f_all_data)
+cat("n=", length(dfAll$IP))
+```
+
+```{r}
+f_bda_model <- "../models/bda.wppl"
+model_bda <- getModelFile(f_bda_model)
+```
+
+
+```{r}
+problemIPs <- c('142.196.192.44', 
+                '173.242.228.167',
+                '104.57.161.213',
+                '104.11.62.66',
+                '184.155.134.46',
+                '67.168.183.190',
+                '108.210.65.252')
+```
+
+```{r}
+# pt <- proc.time()
+# df_bda <- rwebppl::webppl(model_bda, data=dfAll, data_var='rData', cores=4)
+# et <- proc.time() - pt
+# cat(paste("Run time: ", et))
+
+df_predictives <- read.csv("../analysis/df_predictives_20181119.csv")
+```
+
+```{r merge bda and raw data}
+df_predictives <- merge(dfAll, df_predictives)
+# write_csv(df_predictives, 'df_predictives_20181119.csv')
+```
+
+Check out Model / Human `r^2`
+```{r}
+df_frequent <- df_predictives %>% 
+  select(IP, condition, alpha, depth, inferredCondition, frequent_cnt, posteriorPredictiveFrequent) %>%
+  mutate(type='frequent') %>%
+  rename(actualCnt=frequent_cnt,
+         estCnt=posteriorPredictiveFrequent)
+  
+df_infrequent <- df_predictives %>% 
+  select(IP, condition, alpha, depth, inferredCondition, infrequent_cnt, posteriorPredictiveInfrequent) %>%
+  mutate(type='infrequent') %>%
+  rename(actualCnt=infrequent_cnt,
+         estCnt=posteriorPredictiveInfrequent)
+
+df_predictives2 <- rbind(df_frequent, df_infrequent)
+cor(df_predictives2$actualCnt, df_predictives2$estCnt)^2
+
+```
+
+
+```{r}
+df_predictives2 %>%
+  # mutate(actualFrequentProps=frequent_cnt / frequent_n,
+  #        actualInrequentProps=infrequent_cnt / infrequent_n,
+  #        estFrequentProps=posteriorPr5edictiveFrequent / frequent_n,
+  #        estInfrequentProps=posteriorPredictiveInfrequent / infrequent_n) %>%
+  # select(IP, condition, inferredCondition, actualFrequentProps, estFrequentProps, actualInrequentProps, estInfrequentProps) %>%
+  # gather(type, value, c(posteriorPredictiveFrequent, posteriorPredictiveInfrequent))
+  ggplot(aes(x=actualCnt, y=estCnt, col=condition), alpha=0.4) +
+    geom_smooth(method='lm') +
+    geom_point(aes(fill=condition), alpha=0.6, size=3, colour="white", pch=21) +
+    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
+    facet_wrap(~condition, scales="free") +
+    ylab('Posterior predictive \n counts of short form') +
+    xlab('Human data \n counts of short form') +
+    theme_few()
+
+ggsave('../../paper/figs/post-predictives-plot.png', width=6, height=3)
+```
+
+Compare to "optimal baseline" optimal in that `time` condition always pick short, `accuracy` always long, etc.
+```{r}
+df_predictives2 %>%
+  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
+                         ifelse(condition=='combined' & type=='infrequenty', 8,
+                                ifelse(condition=='accuracy' & type=='frequent', 0,
+                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
+                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
+  ggplot(aes(x=actualCnt, y=baseline, col=condition), alpha=0.4) +
+    geom_point(aes(fill=condition), alpha=0.6, size=3, colour="white", pch=21) +
+    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
+    facet_wrap(~condition, scales="free") +
+    ylab('Baseline model \n counts of short form') +
+    xlab('Human data \n counts of short form') +
+    theme_few()
+
+df_predictives2 %>%
+  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
+                         ifelse(condition=='combined' & type=='infrequenty', 8,
+                                ifelse(condition=='accuracy' & type=='frequent', 0,
+                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
+                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
+  group_by(condition) %>%
+  summarise(r2 = cor(actualCnt, estCnt)^2)
+
+df_predictives2 %>%
+  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
+                         ifelse(condition=='combined' & type=='infrequenty', 8,
+                                ifelse(condition=='accuracy' & type=='frequent', 0,
+                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
+                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
+  summarise(r2 = cor(actualCnt, baseline))
+```
+
+
+How well do we infer the strategies?
+```{r}
+mean(df_predictives$inferredCondition == df_predictives$actualCondition)
+```
+
+
+Output inferred subject-level params
+```{r}
+df_predictives %>%
+  select(IP, alpha, depth, inferredCondition) %>%
+  toJSON() %>%
+  write_lines('subjectInferredParams.json')
+```
+
+
+# Try to model time dynamics
+
+```{r}
+f_temporal_bda_model <- "../models/bdaFig5.wppl"
+model_temporal_bda <- getModelFile(f_temporal_bda_model)
+df_trajectories <- rwebppl::webppl(model_temporal_bda)
+```
+
+
+
+```{r}
+
+df2 <- data.frame()
+for (i in seq(1, length(df_trajectories))) {
+  df2 <- rbind(df2, df_trajectories[[i]])
+}
+
+```
+```{r}
+numIPs <- length(unique(df2$IP))
+df2$trialNum <- rep(seq(1, 31), numIPs)
+```
+
+```{r}
+df2 %>%
+  filter(trialNum==1 | trialNum==31) %>%
+  spread(trialNum, data) %>%
+  rename('first'=`1`, 'last'=`31`) %>%
+  mutate(diff=last-first) %>%
+  ggplot(aes(x=IP, y=diff)) +
+    geom_bar(stat='identity', position='dodge') +
+    theme_few()
+```
+
+
+```{r}
+df2 %>%
+  group_by(trialNum) %>%
+  summarise(n=n(),
+            avgProp=mean(data),
+            ci_high=avgProp + 1.96 *sqrt(avgProp*(1-avgProp)/n),
+            ci_low=avgProp - 1.96 *sqrt(avgProp*(1-avgProp)/n)) %>%
+  ggplot(aes(x=trialNum, y=avgProp)) +
+    geom_line() +
+    geom_errorbar(aes(ymax=ci_high, ymin=ci_low)) +
+    ylim(0, 1) +
+    theme_few()
+```
+
+
+
+
+
+
+
+
+
+

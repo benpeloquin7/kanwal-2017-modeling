@@ -176,11 +176,12 @@ mapData({data: IPs}, function(IP) {
   var speakerParams = getSubjectParams(IP)
   var speaker = getSpeakerAndParams(speakerParams)[0]
   var params = getSpeakerAndParams(speakerParams)[1]
-  mapData({data: currentParticipantData}, function(datum) {
+  var res = mapData({data: currentParticipantData}, function(datum) {
     var frequentCnt = 12 + (datum.frequent ? datum.frequent : 0)
     var infrequentCnt = 10 + (datum.infrequent ? datum.infrequent : 0)
-    return Math.exp(speaker('zopudon', {'pMeanings': [frequentCnt, infrequentCnt], 
+    return {IP: IP, data:Math.exp(speaker('zopudon', {'pMeanings': [frequentCnt, infrequentCnt], 
                                         'alpha': params['alpha'],
-                                        'costs': params['costs']}).score('zop'))
+                                        'costs': params['costs']}).score('zop'))}
   })
+  return res
 })
