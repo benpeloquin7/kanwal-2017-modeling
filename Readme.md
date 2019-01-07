@@ -1,15 +1,13 @@
 # Modeling Kanwall et al. 2017
 
 
-### Problem IPs
+Kanwal et al. (2017) conduct an experimental study of Zipf's Law of Abbreviation in an artificial langauge learning paradigm.
 
-142.196.192.44
-173.242.228.167
-104.57.161.213
-104.11.62.66
-184.155.134.46
-67.168.183.190
-108.210.65.252
-104.57.161.213
+Results indicate that Zipfian speaker- and listener-pressures are necessary to derive Law of Abbreviation.
 
-117.229.19.52
+Authors highlight that these results are consistent with a pragmatic-langauge use account, but that the current
+paradigm cannot distinguish between these accounts. 
+
+We explore the second account conducting a Bayesian data analysis, representating study participants as rational and pragmatic using the
+Rational Speech Act framework (RSA) of Frank & Goodman (2012). Inferring participant-level parameters we find close
+fit between model posterior-predictives and the experimental data (overall r^2=0.98).
