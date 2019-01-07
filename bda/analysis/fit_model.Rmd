@@ -8,6 +8,7 @@ output: html_document
 ```{r libraries}
 library(ggplot2)
 library(ggthemes)
+library(gridExtra)
 library(rwebppl)
 library(tidyverse)
 ```
@@ -41,19 +42,19 @@ cat("n=", length(dfAll$IP))
 ```
 
 ```{r}
-f_bda_model <- "../models/bda.wppl"
-model_bda <- getModelFile(f_bda_model)
+# f_bda_model <- "../models/bda.wppl"
+# model_bda <- getModelFile(f_bda_model)
 ```
 
 
 ```{r}
-problemIPs <- c('142.196.192.44', 
-                '173.242.228.167',
-                '104.57.161.213',
-                '104.11.62.66',
-                '184.155.134.46',
-                '67.168.183.190',
-                '108.210.65.252')
+# problemIPs <- c('142.196.192.44', 
+#                 '173.242.228.167',
+#                 '104.57.161.213',
+#                 '104.11.62.66',
+#                 '184.155.134.46',
+#                 '67.168.183.190',
+#                 '108.210.65.252')
 ```
 
 ```{r}
@@ -89,6 +90,28 @@ cor(df_predictives2$actualCnt, df_predictives2$estCnt)^2
 
 ```
 
+```{r}
+plot_all_post_preds <- df_predictives2 %>%
+  # mutate(actualFrequentProps=frequent_cnt / frequent_n,
+  #        actualInrequentProps=infrequent_cnt / infrequent_n,
+  #        estFrequentProps=posteriorPr5edictiveFrequent / frequent_n,
+  #        estInfrequentProps=posteriorPredictiveInfrequent / infrequent_n) %>%
+  # select(IP, condition, inferredCondition, actualFrequentProps, estFrequentProps, actualInrequentProps, estInfrequentProps) %>%
+  # gather(type, value, c(posteriorPredictiveFrequent, posteriorPredictiveInfrequent))
+  ggplot(aes(x=actualCnt, y=estCnt, col=condition), alpha=0.4) +
+    geom_smooth(aes(group=0), method='lm') +
+    geom_point(aes(fill=condition), alpha=0.6, size=3, colour="white", pch=21) +
+    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
+    ylab('Posterior predictive \n counts of short form') +
+    xlab('Human data \n counts of short form') +
+    ggtitle('r^2=0.987') +
+    theme_few() +
+    theme(plot.title = element_text(hjust = 0.5))
+
+ggsave('../../paper/figs/all-post-predictives-plot.png', plot_all_post_preds, width=6, height=3)
+```
+
+
 
 ```{r}
 df_predictives2 %>%
@@ -107,25 +130,33 @@ df_predictives2 %>%
     xlab('Human data \n counts of short form') +
     theme_few()
 
-ggsave('../../paper/figs/post-predictives-plot.png', width=6, height=3)
+ggsave('../../paper/figs/post-predictives-facet-plot.png', width=6, height=3)
 ```
 
 Compare to "optimal baseline" optimal in that `time` condition always pick short, `accuracy` always long, etc.
 ```{r}
-df_predictives2 %>%
+bda_vs_baseline_plot <- df_predictives2 %>%
   mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
                          ifelse(condition=='combined' & type=='infrequenty', 8,
                                 ifelse(condition=='accuracy' & type=='frequent', 0,
                                        ifelse(condition=='accuracy' & type=='infrequent', 24,
                                               ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
-  ggplot(aes(x=actualCnt, y=baseline, col=condition), alpha=0.4) +
+  gather('model', 'pred', c(baseline, estCnt)) %>%
+  mutate(model=ifelse(model=='estCnt', 'BDA', 'Basline')) %>%
+  ggplot(aes(x=actualCnt, y=pred, col=condition), alpha=0.4) +
     geom_point(aes(fill=condition), alpha=0.6, size=3, colour="white", pch=21) +
+    geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
     # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
-    facet_wrap(~condition, scales="free") +
+    facet_wrap(~model, scales="free") +
     ylab('Baseline model \n counts of short form') +
     xlab('Human data \n counts of short form') +
     theme_few()
 
+ggsave('../../paper/figs/bda-vs-baseline-plot.png', bda_vs_baseline_plot, width=6, height=3)
+```
+
+
+```{r}
 df_predictives2 %>%
   mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
                          ifelse(condition=='combined' & type=='infrequenty', 8,
@@ -142,12 +173,56 @@ df_predictives2 %>%
                                        ifelse(condition=='accuracy' & type=='infrequent', 24,
                                               ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
   summarise(r2 = cor(actualCnt, baseline))
+
+
+
+```
+
+## Subject-level inferred params?
+
+```{r}
+plot_alpha <- df_predictives %>%
+  ggplot(aes(alpha)) +
+    geom_density() +
+    theme_few()
+
+plot_depth <- df_predictives %>%
+  ggplot(aes(depth)) +
+    geom_histogram(bins=3) +
+    theme_few()
+
+plot_attention <- df_predictives %>%
+  ggplot(aes(inferredAttention)) +
+    geom_density() +
+    theme_few()
+
+plot_condition <- df_predictives %>%
+  mutate(inferredCondition=as.character(inferredCondition)) %>%
+  mutate(inferredCondition=ifelse(inferredCondition=='conventionalized', 'other', inferredCondition)) %>%
+  group_by(inferredCondition) %>%
+  summarise(count=n()) %>%
+  ggplot(aes(x=inferredCondition, y=count)) +
+    geom_bar(stat='identity', position='dodge') +
+    theme_few() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plot_all_params <- grid.arrange(plot_alpha, plot_depth, plot_attention, plot_condition, nrow=2)
+ggsave('../../paper/figs/inferred-params-plot.png', plot=plot_all_params, width=6, height=4)
+# plot_condition <- df_predictives %>%
+#   group_by(inferredCondition) %>%
+#   summarise(n=n())
 ```
 
 
 How well do we infer the strategies?
 ```{r}
 mean(df_predictives$inferredCondition == df_predictives$actualCondition)
+```
+
+We use conventionatlized only for a few. These are very strange in that they *almost* always avoid using the short form for the frequent term, but use it for the non-frequent 
+```{r}
+df_predictives %>%
+  filter(inferredCondition=='conventionalized')
 ```
 
 
