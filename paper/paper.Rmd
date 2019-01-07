@@ -5,8 +5,10 @@ csl: apa6.csl
 document-params: "10pt, letterpaper"
 
 author-information: > 
-    \author{{\large \bf Author 1} \\ \texttt{author1@university.edu} \\ Department of Psychology \\ Some University
-    \And {\large \bf Author 2} \\ \texttt{author1@university.edu} \\ Department of Psychology \\ Some University}
+    \author{{\large \bf Benjamin N. Peloquin} \\ \texttt{bpeloqui@stanford.edu} \\ Department of Psychology \\ Stanford University
+    \And
+    {\large \bf Noah D. Goodman} \\ \texttt{noah@university.edu} \\ Department of Computer Science \\ Stanford University
+    \And {\large \bf Michael C. Frank} \\ \texttt{mike@university.edu} \\ Department of Psychology \\ Stanford University}
 
 abstract: 
     Zipf (1935) argued that the relation between a word's frequency and length was 
@@ -43,19 +45,19 @@ library(xtable)
 
 # Introduction
 
-Zipf (1935) argued for *effort minimization* as a guiding principle of human behavior. Relying on empirical evidence from corpora, he argued that the unique dynamics of speaker- and listener-effort minimization give rise to particular distribuational forms found in natural langauge. In particular, Zipf examined the relation between a word's frequency in a corpus and a variety of properties including its rank-frequency, its denotation size, and its length. In terms of this last property, what he later termed the "Law of Abbrevation," Zipf claimed that the more frequent words are the shorter they tend to be. This relationship has been confirmed cross-linguistically, and may also be present in animal communication systems (Ferer-i-Cancho et, 2013).\par
+Zipf (1935) presented a view of human behavior that focused on  *effort minimization* as a guiding principle (Principle of Least Effort). Relying on empirical evidence from corpora, he argued that the unique dynamics of speaker- and listener-effort minimization give rise to particular distributional forms found in natural language. Zipf examined the relation between a word's frequency in a corpus and a variety of properties including its rank-frequency, its denotation size, and its length. In terms of this last property, what he later termed the "Law of Abbreviation," Zipf claimed that the more frequent words are the shorter they tend to be. This relationship has been confirmed cross-linguistically, and may also be present in animal communication systems (Ferrer-i-Cancho et, 2013).\par
 
-Under a Zipfian analysis, patterns such as the "Law of Abbrevation" emerge from the competition of speaker- and listener- forces.\par
+Zipf argued that this relationship between frequency and length was an emergent property of competing speaker-listener pressures. Under this framing, communication can be considered a cooperative, joint activity between interlocutors. Importantly, however, this activity contains a fundamental asymmetry in terms of what is effortful for a speaker compare to what is effortful for a listener.  An optimal language, from a speaker perspective, what Zipf termed “Speaker’s economy,” would consist of a single, low-cost word which was fully ambiguous - referring to any possible referent in the world. In using such a language a listener would need to disambiguate every utterance by a speaker. By contrast, if a language were optimised solely in terms of listener effort, what Zipf termed “Auditor’s economy,” the language should bijectively map all forms to meanings so there was no need for a listener to disambiguate.\par
 
-While the Zipfian analysis is compelling, other work has argued that identical distributional forms are the result of random typing (Ferrer-i-Cancho & Mascoso del Pardo, 2012).  Additionally, most evidence supporting the Zipfian approach has been indirect and did not fully explicate the causal role of competiting speaker and listener pressures.\par
+Zipf argued that these competing forces -- Speaker’s and Auditor’s economy -- give rise to the particular distributional forms found in all languages, including the particular relationship between word frequency and length. The issue is far from settled, however -- subsequent work has argued that such properties could also be explained by a process of random typing (Ferrer-i-Cancho & Mascoso del Pardo, 2012).  Moreover, most evidence supporting the Zipfian approach has been indirect and did not fully determine the causal role of competing speaker and listener pressures.\par
 
 Kanwal et al. (2017) implemented an artificial language learning paradigm in order to isolate these pressures directly. In line with Zipf's original analysis, they hypothesized that only in the combined speaker and listener pressure condition would the "Law of Abbreviation" emerge. That is, participants in the combined condition should converge to a lexicon in which more frequently used words were shortened and less frequent words were longer. By contrast, they hypothesized that in conditions which there was only a speaker pressure or only a listener pressure such effects would not be seen. Results largely confirmed their hypotheses.\par
 
-While this study represents an important experimental step in confirming Zipfian notions about lexicon-level efficiency, the authors highlight an important distinction. That is, a "distinction between a language-user's mental representation of the lexicon, and the form-meaning mappings they actually produce in communication. Participants using the short form for the frequent object and the long form for the infrequent object may still retain associations of both forms with both objets in their mental lexicon-however, the nature of the communication task in this experiment may have caused them to produce only the short form for one object and the long form for the other based on purely pragmatic considerations. Given that our experiment only recorded particpnts' actual prdocutions, we cannot with certainty distinguish between these two possible explanations for the observed behavior."\par
+While this study represents an important experimental step in confirming Zipfian notions about lexicon-level efficiency, the authors highlight an important distinction. That is, a "distinction between a language-user's mental representation of the lexicon, and the form-meaning mappings they actually produce in communication. Participants using the short form for the frequent object and the long form for the infrequent object may still retain associations of both forms with both objects in their mental lexicon-however, the nature of the communication task in this experiment may have caused them to produce only the short form for one object and the long form for the other based on purely pragmatic considerations. Given that our experiment only recorded participants’ actual productions, we cannot with certainty distinguish between these two possible explanations for the observed behavior."\par
 
-In the current project we examine the second explanation using a Bayesian Data Analysis in which we represent study participants as rational-pragmatic speakers and listeners using the Rational Speech act framework (Frank & Goodman, 2012; Goodman & Frank, 2016). Participant-level parameters are inferred using bayesian inference. We correlate posteior-predictive values with participant-level data found by Kanwal et al. (2017) finding high degrees of agreement with our model and their data ($r^2=0.98$). While we beleive this provides compelling evidence that participants are behaving pragmatically we highlight a number of findings that our current analysis does not accomodate. Further we see these findings as possible evidence for an interpretation put forth by Kanwal et al. That is, the "pragmatics-driven asymetry in usage may or may not lead to an immediate shift in ledical representations, it may be an important first step in such a change."\par
+In the current project we examine the second explanation using a Bayesian Data Analysis in which we represent study participants as rational-pragmatic speakers and listeners using the Rational Speech act framework (Frank & Goodman, 2012; Goodman & Frank, 2016). Participant-level parameters are inferred using bayesian inference. We correlate posterior-predictive values with participant-level data found by Kanwal et al. (2017) finding high degrees of agreement with our model and their data ($r^2=0.98$). While we believe this provides compelling evidence that participants are behaving pragmatically we highlight a number of findings that our current analysis does not accomodate. Further we see these findings as possible evidence for an interpretation put forth by Kanwal et al. That is, the "pragmatics-driven asymmetry in usage may or may not lead to an immediate shift in lexical representations, it may be an important first step in such a change."\par
 
-In the following work we introduce the empirical framework of Kanwal et al. (2017) focusing on the three-conditions most relevant to our current analysis. Subsequently, we introduce the Rational Speech Act framework (RSA), our linking function in our Baysian data analysis. We provide a high-level overview of the particular modeling framework and the results of our analysis. We provide a discussion of the short-comings and implications of our approach ending with an example of how pragmatic driven asymetries may drive lexical change.\par
+In the following work we introduce the empirical framework of Kanwal et al. (2017) focusing on the three-conditions most relevant to our current analysis. Subsequently, we introduce the Rational Speech Act framework (RSA), our linking function in our Bayesian data analysis. We provide a high-level overview of the particular modeling framework and the results of our analysis. We provide a discussion of the short-comings and implications of our approach ending with an example of how pragmatic driven asymmetries may drive lexical change.\par
 
 # Experimental evidence of Zipf's Law of Abbreviation
 
@@ -63,17 +65,20 @@ Previous evidence for Zipf's Law of Abbreviation was ...\par
 
 Kanwal et al. (2017) used an artificial language learning paradigm to isolate the impact of speaker- and listener-pressures. They test four conditions. In the *combined* condition two participants were paired in web experiment....\par
 
-The authors hypothesized that a preference to map the short form to the more frequent object, but not the infrequent object should only occur in *combined* condition. By contrast, when there was no pressure to communicate, and only the speaker cost was present, participants should always prefer the shortened form, regardless of the referrent. When there was cost different between the shortened and lengthened forms (speaker pressure) then participants shold always prefer to use the unambiguous, long-forms regardless of referrent. The authors ran an additional forth condition in which there were no speaker or listener pressures. For the purposes of the current project we did no anlyse data from this condition (REASON WHY HERE).
+The authors hypothesized that a preference to map the short form to the more frequent object, but not the infrequent object should only occur in *combined* condition. By contrast, when there was no pressure to communicate, and only the speaker cost was present, participants should always prefer the shortened form, regardless of the referent. When there was cost different between the shortened and lengthened forms (speaker pressure) then participants should always prefer to use the unambiguous, long-forms regardless of referent. The authors ran an additional fourth condition in which there were no speaker or listener pressures. For the purposes of the current project we did no analyse data from this condition (REASON WHY HERE).
 
 # A changing lexicon or pragmatic language use?
 
-While the data is consistent with a Zipfian account of the Law of Abbreviation, Kanwal et al. (2017) highlight an important alternative explanation. They describe a distinction between the "mental representation" of the lexicon and produced forms. That is, Zipf's Law of Abbreviation is an account of lexical change, not language-use. If participants are retaining both words in their "mental lexicon," but *using the lexicon pragmatically* by using the shortened form only for the more frequent item, then the lexicon itself has not "changed" at all. Given the nature of their current task, the authors highlight that they cannot distinghish beetween the possiuble explanations. 
+While the data is consistent with a Zipfian account of the Law of Abbreviation, Kanwal et al. (2017) highlight an important alternative explanation. They describe a distinction between the "mental representation" of the lexicon and produced forms. That is, Zipf's Law of Abbreviation is an account of lexical change, not language-use. If participants are retaining both words in their "mental lexicon," but *using the lexicon pragmatically* by using the shortened form only for the more frequent item, then the lexicon itself has not "changed" at all. Given the nature of their current task, the authors highlight that they cannot distinguish between the possible explanations. 
 
 # Modeling framework
 
 ## Rational speech act theory as a model for pragmatic participant behavior
 
-## Plate diagram
+```{r plate-diagram, fig.env = "figure", fig.pos = "H", fig.align='center', fig.width=2, fig.height=2, set.cap.width=T, num.cols.cap=1, fig.cap = "One column image."}
+img <- png::readPNG("figs/plate-temp.png")
+grid::grid.raster(img)
+```
 
 # Results
 ```{r plot-post-predictives, fig.env = "figure*", fig.pos = "h", fig.width=6, fig.height=3, fig.align = "center", set.cap.width=T, num.cols.cap=2, fig.cap = "This image spans both columns. And the caption text is limited to 0.8 of the width of the document."}
@@ -81,153 +86,11 @@ img <- png::readPNG("figs/post-predictives-plot.png")
 grid::grid.raster(img)
 ```
 
-# Connecting pragmatic langauge use to language change
+# Connecting pragmatic language use to language change
 
+# Conclusion
 
-# General Formatting Instructions 
-
-For general information about authoring in markdown, see **[here](http://rmarkdown.rstudio.com/authoring_basics.html).**
-
-For standard spoken papers and standard posters, the entire 
-contribution (including figures, references, everything) can be 
-no longer than six pages. For abstract posters, the entire contribution 
-can be no longer than one page. For symposia, the entire contribution 
-can be no longer than two pages.
-
-The text of the paper should be formatted in two columns with an
-overall width of 7 inches (17.8 cm) and length of 9.25 inches (23.5
-cm), with 0.25 inches between the columns. Leave two line spaces
-between the last author listed and the text of the paper. The left
-margin should be 0.75 inches and the top margin should be 1 inch.
-\textbf{The right and bottom margins will depend on whether you use
-U.S. letter or A4 paper, so you must be sure to measure the width of
-the printed text.} Use 10 point Times Roman with 12 point vertical
-spacing, unless otherwise specified.
-
-The title should be in 14 point, bold, and centered. The title should
-be formatted with initial caps (the first letter of content words
-capitalized and the rest lower case). Each author's name should appear
-on a separate line, 11 point bold, and centered, with the author's
-email address in parentheses. Under each author's name list the
-author's affiliation and postal address in ordinary 10 point  type.
-
-Indent the first line of each paragraph by 1/8~inch (except for the
-first paragraph of a new section). Do not add extra vertical space
-between paragraphs.
-
-# First-Level Headings
-
-First level headings should be in 12 point , initial caps, bold and
-centered. Leave one line space above the heading and 1/4~line space
-below the heading.
-
-## Second-Level Headings
-
-Second level headings should be 11 point , initial caps, bold, and
-flush left. Leave one line space above the heading and 1/4~ line
-space below the heading.
-
-### Third-Level Headings
-
-Third-level headings should be 10 point , initial caps, bold, and flush
-left. Leave one line space above the heading, but no space after the
-heading.
-
-# Formalities, Footnotes, and Floats
-
-Use standard APA citation format. Citations within the text should
-include the author's last name and year. If the authors' names are
-included in the sentence, place only the year in parentheses, as in
-[-@NewellSimon1972a], but otherwise place the entire reference in
-parentheses with the authors and year separated by a comma
-[@NewellSimon1972a]. List multiple references alphabetically and
-separate them by semicolons [@ChalnickBillman1988a; @NewellSimon1972a]. 
-Use the et. al. construction only after listing all the authors to a
-publication in an earlier reference and for citations with four or
-more authors.
-
-For more information on citations in RMarkdown, see **[here](http://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html#citations).**
-
-## Footnotes
-
-Indicate footnotes with a number\footnote{Sample of the first
-footnote.} in the text. Place the footnotes in 9 point type at the
-bottom of the page on which they appear. Precede the footnote with a
-horizontal rule.\footnote{Sample of the second footnote.} You can also use 
-markdown formatting to include footnotes using this syntax [^1].
-
-[^1]: Sample of a markdown footnote.
-
-## Figures
-
-All artwork must be very dark for purposes of reproduction and should
-not be hand drawn. Number figures sequentially, placing the figure
-number and caption, in 10 point, after the figure with one line space
-above the caption and one line space below it. If necessary, leave extra white space at
-the bottom of the page to avoid splitting the figure and figure
-caption. You may float figures to the top or bottom of a column, or
-set wide figures across both columns.
-
-## Two-column images
-
-You can read local images using png package for example and plot 
-it like a regular plot using grid.raster from the grid package. 
-With this method you have full control of the size of your image. **Note: Image must be in .png file format for the readPNG function to work.**
-
-You might want to display a wide figure across both columns. To do this, you change the `fig.env` chunk option to `figure*`. To align the image in the center of the page, set `fig.align` option to `center`. To format the width of your caption text, you set the `num.cols.cap` option to `2`.
-
-```{r 2-col-image, fig.env = "figure*", fig.pos = "h", fig.width=4, fig.height=2, fig.align = "center", set.cap.width=T, num.cols.cap=2, fig.cap = "This image spans both columns. And the caption text is limited to 0.8 of the width of the document."}
-img <- png::readPNG("figs/walrus.png")
-grid::grid.raster(img)
-```
-
-## One-column images
-
-Single column is the default option, but if you want set it explicitly, set `fig.env` to `figure`. Notice that the `num.cols` option for the caption width is set to `1`.
-
-```{r image, fig.env = "figure", fig.pos = "H", fig.align='center', fig.width=2, fig.height=2, set.cap.width=T, num.cols.cap=1, fig.cap = "One column image."}
-img <- png::readPNG("figs/lab_logo_stanford.png")
-grid::grid.raster(img)
-```
-
-
-## R Plots
-
-You can use R chunks directly to plot graphs. And you can use latex floats in the
-fig.pos chunk option to have more control over the location of your plot on the page. For more information on latex placement specifiers see **[here](https://en.wikibooks.org/wiki/LaTeX/Floats,_Figures_and_Captions)**
-
-```{r plot, fig.env="figure", fig.pos = "H", fig.align = "center", fig.width=2, fig.height=2, fig.cap = "R plot" }
-x <- 0:100
-y <- 2 * (x + rnorm(length(x), sd = 3) + 3)
-
-ggplot2::ggplot(data = data.frame(x, y), 
-       aes(x = x, y = y)) + 
-  geom_point() + 
-  geom_smooth(method = "lm")
-```
-
-
-## Tables
-
-Number tables consecutively; place the table number and title (in
-10 point) above the table with one line space above the caption and
-one line space below it, as in Table 1. You may float
-tables to the top or bottom of a column, set wide tables across both
-columns.
-
-You can use the xtable function in the xtable package.
-
-```{r xtable, results="asis"}
-n <- 100
-x <- rnorm(n)
-y <- 2*x + rnorm(n)
-out <- lm(y ~ x)
-
-tab1 <- xtable::xtable(summary(out)$coef, digits=c(0, 2, 2, 1, 2), 
-                      caption = "This table prints across one column.")
-
-print(tab1, type="latex", comment = F, table.placement = "H")
-```
+Languages around the world display a consistent relationship between word length and frequency -- more frequent words tend to be shorter (CITATIONS).  Zipf (1935) called this particular finding the “Law of Abbreviation” and characterized it in terms of competing speaker listener pressures. While other work has provided indirect evidence consistent with this Zipfian analysis (CITATIONS), Kanwal et al. (2017) attempted to derive this effect while isolating speaker and listener pressures experimentally. In an artificial language learning paradigm the authors showed that subjects were significantly more likely to produce lexicons consistent the “Law of Abbreviation,” but only when both speaker and listener pressures are present. While this evidence is compelling the authors highlight an alternative hypothesis that may have generated the same effect, but could not be distinguished in the current study -- pragmatic language use instead of lexical change. To test this secondary hypothesis we conducted a Bayesian data analysis, modeling participants as rational pragmatic agents using the Rational Speech-act (RSA) framework. Inferring subject-level parameters we are able to fit Kanwal et al. (2017) experimental data with high-levels of accuracy ($r^2=0.986). While we believe this provides evidence for the pragmatic-language use interpretation we also highlight the compatibility of this interpretation with an additional insight of Kanwal et al. (2017) -- pragmatic language use may serve as an important bootstrap for future language change.
 
 # Acknowledgements
 
@@ -244,3 +107,4 @@ the end of the paper.
 \setlength{\parindent}{-0.1in} 
 \setlength{\leftskip}{0.125in}
 \noindent
+
