@@ -1,5 +1,5 @@
 ---
-title: "A pragmatic account of Zipf's Law of Abbreviation via Bayesian data analysis"
+title: "Exploring a pragmatic account of Zipf's Law of Abbreviation using Bayesian data analysis"
 bibliography: library.bib
 csl: apa6.csl
 document-params: "10pt, letterpaper"
@@ -42,7 +42,6 @@ library(ggplot2)
 library(xtable)
 ```
 
-
 # Introduction
 
 Zipf (1935) presented a view of human behavior that focused on *effort minimization* as a guiding principle. Relying on empirical evidence from corpora, he argued that the unique dynamics of speaker- and listener-effort minimization give rise to the distributional forms found  in natural language. Among these, Zipf examined the relation between a word's frequency in a corpus and a variety of properties including its rank-frequency, its denotation size, and its length. In terms of this last property, what he later termed the "Law of Abbreviation," Zipf claimed that the more frequent words are, the shorter they tend to be. Evidence for this relationship can be found across languages, may also be present in animal communication systems  (Ferrer-i-Cancho et, 2013), and is a property of artificial (programming) languages as well.\par
@@ -81,22 +80,22 @@ Grice (1957) argued that communication could largely be analysed as an instance 
 
 Notably, by reasoning about one-another, about the goals of the game (be quick, be accurate), and the details of context (differential word costs and object frequencies) a pair can converge on optimal *use* of the provided language, but *without changing the underlying structure*.
 
-## Rational speech act theory as a model for pragmatic participant behavior
+# Rational speech act theory as a model for pragmatic participant behavior
 
 To model this type of rational, pragmatic interaction we adopt the Rational Speech Act Framework (Frank & Goodman, 2012; Goodman & Frank, 2016). RSA is a recursive Bayesian model of pragmatic language production and interpretation, which can largely be seen as a mathematical formalization of essential Gricean principles. RSA has proven to be a productive framework for modeling a range of pragmatic phenomena from hyperbole, metaphor, scalar implicature and others (CITATIONS). Under RSA a speaker agent describes a conditional distribution mapping meanings $u\in U$ to utterances $m\in M$, written as $S(u|m)$. A speaker agent describes a conditional distribution mapping from utterances to meaning, written as $L(m|u)$. Importantly, each of these functions is described in terms of the other. That is,
 
 \begin{equation}
-S_i(u|m) \propto e^{U(u;m)}
+S_i(u|m) \propto e^{-\alpha\times U(u;m)}
 \end{equation}
 Where
 \begin{equation}
-U(u;m) = \alpha(log(L_{i-1}(m|u)) - cost(u))
+U(u;m) = -log(L_{i-1}(m|u)) - cost(u)
 \end{equation}
 And 
 \begin{equation}
 L_{i-1}(m|u) \propto S_{i-1}(u|m)\times p(m)
 \end{equation}
-Defining nested speaker and listener agents could, in principle lead to infinite recursion. We take a *literal listener*, denoted $L_0(m|u) as a basecase. The literal listener does not reason about a speaker model, rather this agent considers the literal semantics of the utterance.
+Defining nested speaker and listener agents could, in principle lead to infinite recursion. We take a *literal listener*, denoted $L_0(m|u)$ as a base-case. The literal listener does not reason about a speaker model, rather this agent considers the literal semantics of the utterance.
 \begin{equation}
 L_0(m|u) \propto \delta_u(m)\times p(m)
 \end{equation}
@@ -109,7 +108,12 @@ Where
 \end{cases}
 \end{equation}
 
-# Modeling framework
+```{r plot-inferred-params, fig.env = "figure*", fig.pos = "h", fig.width=6, fig.height=3, fig.align = "center", set.cap.width=T, num.cols.cap=2, fig.cap = "TEMP - NEEDS UPDATING Inferred subject-level parameter distributions. Moving clock-wise from the upper-right facet -- inferred alpha values for subjects, the recursive depth for each subject, the probability that subjects are paying attention during the experiment, the inferred cost / referrent frequency structure used by the subject."}
+img <- png::readPNG("figs/inferred-params-plot.png")
+grid::grid.raster(img)
+```
+
+## Bayesian data analysis with RSA linking function
 
 Top assess the degree to which the observed production data in Kanwal et al. (2017) can be described by a pragmatic language-use account we conduct a Bayesian data analysis, using RSA as our linking function. Our analysis proceeds in two parts. In the parameter inference phase we infer subject-level parameters. In the model-checking and posterior prediction phase we assess how well our model, with the inferred parameters, describes the experimental data.
 
@@ -117,16 +121,12 @@ Top assess the degree to which the observed production data in Kanwal et al. (20
 
 For each participant we infer a set of parameters -- $\alpha$, $\beta$ are RSA model parameters corresponding the the subjects rationality and recursive depth, respectively. The parameters $\gamma$ and $\lambda$ correspond to the particular condition (made up of utterance costs and object referent priors) as wells as a focus parameter describing the probability that the subject is not paying attention and choosing to produce utterance randomly. Table 1 includes the parameters and their descriptions.\par
 
-```{r plate-notation, fig.env = "figure", fig.pos = "H", fig.align='center', fig.width=2, fig.height=2, set.cap.width=T, num.cols.cap=1, fig.cap = "One column image."}
+```{r plate-notation, fig.env = "figure", fig.pos = "H", fig.align='center', fig.width=2, fig.height=2, set.cap.width=T, num.cols.cap=1, fig.cap = "THIS IS A PLACE-HOLD AND IS INCORRECT"}
 img <- png::readPNG("figs/plate-temp.png")
 grid::grid.raster(img)
 ```
 
-For each subject we use $n=200$ samples using Metropolis-Hasting to approximate the posterior distribution over parameters.
-
-Figure X displays inferred subject params
-
-**NEED SOME FIGURES ON THE INFERRED PARAMS**
+For each subject we use $n=200$ samples using Metropolis-Hasting to approximate the posterior distribution over parameters. Figure X displays inferred subject params.
 
 ### Posterior prediction and model checking
 
@@ -136,14 +136,9 @@ Having inferred these subject-level parameters we’d like to ``run” our RSA-p
 
 As a baseline we can compare an “optimal Zipfian model”. Under this model a speaker in the *combined* condition should always map the short form the most frequent item, but not the infrequent item; in the *time* condition the speaker should always use the short form, regardless of the referent; in the *accuracy* condition the speaker should always use the long forms. For comparison, model fit under this model achieves an overall $r^2=0.630$.
 
-```{r plot-inferred-params, fig.env = "figure*", fig.pos = "h", fig.width=6, fig.height=3, fig.align = "center", set.cap.width=T, num.cols.cap=2, fig.cap = "This image spans both columns. And the caption text is limited to 0.8 of the width of the document."}
-img <- png::readPNG("figs/inferred-params-plot.png")
-grid::grid.raster(img)
-```
-
 # Results
 
-```{r plot-post-predictives, fig.env = "figure*", fig.pos = "h", fig.width=6, fig.height=3, fig.align = "center", set.cap.width=T, num.cols.cap=2, fig.cap = "This image spans both columns. And the caption text is limited to 0.8 of the width of the document."}
+```{r plot-post-predictives, fig.env = "figure*", fig.pos = "h", fig.width=6, fig.height=3, fig.align = "center", set.cap.width=T, num.cols.cap=2, fig.cap = "Posterior predictive values lead to far better fit to human data than a baseline model. Horizontal axes display counts of short-form usage from subjects in Kanwal et al. (2017). Verticle axes display model predictions. The left facet displays predicted short-form usage under a baseline model that implements the 'optimal' solution for each condition. The right facet displays predicted short-form usage under our BDA model."}
 img <- png::readPNG("figs/bda-vs-baseline-plot.png")
 grid::grid.raster(img)
 ```
