@@ -142,7 +142,7 @@ bda_vs_baseline_plot <- df_predictives2 %>%
                                        ifelse(condition=='accuracy' & type=='infrequent', 24,
                                               ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
   gather('model', 'pred', c(baseline, estCnt)) %>%
-  mutate(model=ifelse(model=='estCnt', 'BDA', 'Basline')) %>%
+  mutate(model=ifelse(model=='estCnt', 'BDA', 'Baseline')) %>%
   ggplot(aes(x=actualCnt, y=pred, col=condition), alpha=0.4) +
     geom_point(aes(fill=condition), alpha=0.6, size=3, colour="white", pch=21) +
     geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
