@@ -154,7 +154,7 @@ var getSpeakerModel = function(conditionType, depth) {
 var getConditionParams = cache(function(conditionType) {
   /*
 
-  Get condition params (conditions as instantiate din Kanwall (2017)
+  Get condition params (conditions as instantiated in Kanwall (2017)
 
   https://www.ncbi.nlm.nih.gov/pubmed/28494263
 
