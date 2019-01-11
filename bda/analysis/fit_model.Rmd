@@ -111,7 +111,7 @@ plot_all_post_preds <- df_predictives2 %>%
 ggsave('../../paper/figs/all-post-predictives-plot.png', plot_all_post_preds, width=6, height=3)
 ```
 
-
+## Counts plot 1
 
 ```{r}
 df_predictives2 %>%
@@ -133,18 +133,20 @@ df_predictives2 %>%
 ggsave('../../paper/figs/post-predictives-facet-plot.png', width=6, height=3)
 ```
 
+## Counts plot 2
+
 Compare to "optimal baseline" optimal in that `time` condition always pick short, `accuracy` always long, etc.
 ```{r}
 bda_vs_baseline_plot <- df_predictives2 %>%
   mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
-                         ifelse(condition=='combined' & type=='infrequenty', 8,
+                         ifelse(condition=='combined' & type=='infrequent', 8,
                                 ifelse(condition=='accuracy' & type=='frequent', 0,
                                        ifelse(condition=='accuracy' & type=='infrequent', 24,
                                               ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
   gather('model', 'pred', c(baseline, estCnt)) %>%
   mutate(model=ifelse(model=='estCnt', 'BDA', 'Baseline')) %>%
   ggplot(aes(x=actualCnt, y=pred, col=condition), alpha=0.4) +
-    geom_point(aes(fill=condition), alpha=0.6, size=3, colour="white", pch=21) +
+    geom_point(aes(fill=condition, shape=type), alpha=0.6, size=3) +
     geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
     # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
     facet_wrap(~model, scales="free") +
@@ -155,28 +157,85 @@ bda_vs_baseline_plot <- df_predictives2 %>%
 ggsave('../../paper/figs/bda-vs-baseline-plot.png', bda_vs_baseline_plot, width=6, height=3)
 ```
 
+# Proportions Analysis
 
 ```{r}
-df_predictives2 %>%
+df_cors <- df_predictives2 %>%
   mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
-                         ifelse(condition=='combined' & type=='infrequenty', 8,
+                         ifelse(condition=='combined' & type=='infrequent', 8,
                                 ifelse(condition=='accuracy' & type=='frequent', 0,
-                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
+                                       ifelse(condition=='accuracy' & type=='infrequent', 0,
                                               ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
-  group_by(condition) %>%
-  summarise(r2 = cor(actualCnt, estCnt)^2)
+  gather('model', 'pred', c(baseline, estCnt)) %>%
+  group_by(IP, condition, actualCnt, model) %>%
+  summarise(cntShortForms=sum(pred)) %>%
+  group_by(IP, model, condition) %>%
+  summarise(estCnts=sum(cntShortForms),
+            actCnts=sum(actualCnt)) %>%
+  mutate(condition_n=ifelse(condition=='combined' | condition=='accuracy', 32, 64)) %>%
+  mutate(estProp=estCnts/condition_n,
+         actProp=actCnts/condition_n) %>%
+  ungroup
+```
 
-df_predictives2 %>%
-  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
-                         ifelse(condition=='combined' & type=='infrequenty', 8,
-                                ifelse(condition=='accuracy' & type=='frequent', 0,
-                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
-                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
-  summarise(r2 = cor(actualCnt, baseline))
+```{r}
+df_cors %>%
+  group_by(model) %>%
+  summarise(n=n(),
+            r=cor(estProp, actProp)^2)
+```
+
+## Proportions plot1
+
+```{r}
+df_cors %>%
+  mutate(model=ifelse(model=='baseline', 'Baseline', 'BDA RSA')) %>%
+  ggplot(aes(x=actProp, y=estProp, col=condition), alpha=0.4) +
+    geom_point(aes(fill=condition), alpha=0.6, size=3) +
+    geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
+    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
+    facet_wrap(~model) +
+    ylab('Baseline model \n counts of short form') +
+    xlab('Human data \n counts of short form') +
+    ylim(0, 1) +
+    xlim(0, 1) +
+    theme_few()
+
+ggsave('../../paper/figs/bda-vs-baseline-plot.png', plot = last_plot(), width=6, height=3)
+```
 
 
+
+
+Some kind of significance test?
+
+```{r}
+fisher.z <- function(r1,r2,n1,n2) {
+  # Todo: review (https://stats.stackexchange.com/questions/64152/are-two-pearson-correlation-coefficients-different)
+  ((0.5*log((1+r1)/(1-r1)))-(0.5*log((1+r2)/(1-r2))))/((1/(n1-3))+(1/(n2-3)))^0.5
+}
+  
+  
 
 ```
+
+
+```{r}
+rs <- df_predictives2 %>%
+  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
+                         ifelse(condition=='combined' & type=='infrequent', 8,
+                                ifelse(condition=='accuracy' & type=='frequent', 0,
+                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
+                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
+  filter(type=='frequent') %>%
+  gather(model, value,  c(estCnt, baseline)) %>%
+  select(actualCnt, model, value, condition) %>%
+  group_by(model) %>%
+  summarise(n=n(),
+            r=cor(actualCnt, value)^2)
+print(rs)
+```
+
 
 ## Subject-level inferred params?
 

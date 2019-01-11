@@ -162,7 +162,7 @@ To assess model performance we correlate model posterior predictive values for o
  \hline
   Model & $r^2$ \\
  \hline
- Baseline & $0.630$ \\
+ Baseline & $0.397$ \\
  BDA RSA & $0.987$ \\
  \hline
 \end{tabular}
