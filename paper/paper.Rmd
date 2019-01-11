@@ -6,8 +6,8 @@ document-params: "10pt, letterpaper"
 
 author-information: > 
     \author{{\large \bf Benjamin N. Peloquin} \\ \texttt{bpeloqui@stanford.edu} \\ Department of Psychology \\ Stanford University
-    \And
-    {\large \bf Noah D. Goodman} \\ \texttt{noah@university.edu} \\ Department of Computer Science \\ Stanford University
+    \And {\large \bf Joseph Cornelius} \\ \texttt{jocorn@stanford.edu} \\ Department of Psychology \\ Stanford University
+    \And {\large \bf Noah D. Goodman} \\ \texttt{noah@university.edu} \\ Department of Computer Science \\ Stanford University
     \And {\large \bf Michael C. Frank} \\ \texttt{mike@university.edu} \\ Department of Psychology \\ Stanford University}
 
 abstract: 
@@ -89,10 +89,10 @@ While these results are consistent with a Zipfian account of the Law of Abbrevia
 Grice (1975) argued that communication could largely be understood as an instance of rational, cooperative behavior. Under this framework speakers choose utterances to convey meanings. Listeners attempt to infer the speaker's intended meaning given utterances. At the heart of Grice’s theory was a set of conversational maxims known to both speakers and listeners (be truthful, relevant, informative and perspicuous). Inferences about a speaker’s intended meaning could be derived from speaker behavior relative to these maxims. In particular, this framework assumes that the listener can reason about the speaker’s intentions and relevant contextual information (e.g. common ground).\par
 
 Translating this framing to the current project, we assume that the “matcher” can use contextual information. For example, in the *combined* condition the matcher knows that it is mutually beneficial for them to complete the task as quickly and as accurately as possible. They know the short label is faster (less costly to the speaker) than using a long-form, and that the frequent object occurs three times more often than the infrequent object. In a given trial, in which the matcher is trying to complete the task a Gricean description of their reasoning might go as follows: \newline
-*If the director is trying to transmit information as quickly as possible they should always use the faster, shortened form. But if they want me to pick out the correct referent they should always transmit the unambiguous, slower form. An optimal trade-off should use the short form in as many trials as possible without incurring undo ambiguity. Therefore we should map the shorter, ambiguous form to the more frequent object.*\newline
+
+\textit{If the director is trying to transmit information as quickly as possible they should always use the faster, shortened form. But if they want me to pick out the correct referent they should always transmit the unambiguous, slower form. An optimal trade-off should use the short form in as many trials as possible without incurring undo ambiguity. Therefore we should map the shorter, ambiguous form to the more frequent object.}\newline
 
 Notably, by reasoning about one-another, about the goals of the game (be quick, be accurate), and the details of context (differential word costs and object frequencies) a pair can converge on optimal *use* of the provided language *without changing the underlying structure*.
-
 
 # Rational speech act theory as a model for pragmatic participant behavior
 
@@ -124,22 +124,29 @@ Where
 
 ## Bayesian data analysis with RSA linking function
 
-To assess the degree to which the results in Kanwal et al. (2017) can be described by a pragmatic, language-use account, we conduct a Bayesian data analysis, using RSA as our linking function. Our analysis proceeds in two parts. In the *parameter inference* phase we infer subject-level parameters. In the *model-checking and posterior prediction* phase we assess how well our model, with the inferred parameters, describes the experimental data.
+To assess the degree to which the results in Kanwal et al. (2017) can be described by a pragmatic, language-use account, we conduct a Bayesian data analysis, using RSA as our linking function. Our analysis proceeds in two parts. In the *parameter inference* phase we infer subject-level parameters. In the *model-checking and posterior prediction* phase we assess how well our model, with the inferred parameters, describes the experimental data.\par
 
-### Parameter inference
+We model each participant as an RSA agent, inferring for each the following set of parameters -- $\alpha$, $\beta$ are RSA model parameters corresponding the the subjects rationality and recursive depth, respectively. The parameters $\lambda$ and $\gamma$ correspond to experiment-specific parameters. We describe each parameter in more depth. 
 
-```{r table-parameters, fig.env = "table", fig.pos = "H", fig.align='center', fig.width=3.2, fig.height=2, set.cap.width=T, num.cols.cap=1, fig.cap = "Parameters"}
-img <- png::readPNG("figs/parameters-table.png")
-grid::grid.raster(img)
-```
+#### Rationality parameter ($\alpha$)
+Rational speech-act theory frames natural language understanding and generation as probabilistic inference. At the heart of this model is a utility calculation (equation 2) in which the speaker considers both the informativity of using an utterance $u$ to convey some meaning $m$, as well as it’s cost $cost(u)$. We capture the degree to which the speaker has as preference to choose the most informativity utterance by multiplying this utility function by a scalar $\alpha$. We infer a separate $\alpha$ value for each subject using a uniform prior over the integers $1...30$.\par
 
-We model each participant as an RSA agent, inferring for each the following set of parameters -- $\alpha$, $\beta$ are RSA model parameters corresponding the the subjects rationality and recursive depth, respectively. The parameters $\gamma$ and $\lambda$ correspond to experiment-specific parameters -- the particular condition (described by the utterance costs and object referent priors), and a focus parameter describing the probability that the subject is not paying attention and choosing to produce utterance randomly. Table 1 includes the parameters and their descriptions.\par
+#### Recursive depth ($\beta$)
+Perhaps most characteristic of RSA is the nested model definitions in which speakers and listeners are defined recursively in terms of one another. The parameter $\lambda$ controls the depth of recursion. We assume a uniform prior over the integers $1..3$ inferring the level of recursion for each subject.\par
+
+#### Cost and meaning structure ($\lambda$)
+Rather than explicitly map each subject to one of the three conditions of we consider in this project (*combined*, *time*, and *accuracy*) we allow the model to infer these from the data. For each condition we describe the particular utterance cost and meanings prior structure. In the *combined* condition we consider utterance costs such that the longer forms are twice as expensive as shorter forms and meaning priors the reflect the training proportions (the infrequent item occurs 8 times and the frequent items 24 times). In the *time condition* we assume the same structure except we only consider an $S_0$ speaker who does not consider a listener agent. (Recall that no listener agent is present in that condition.) For the *accuracy* condition we consider the same structure as in the *combined* condition, except we assume that there is no cost difference between the utterances. We also consider a fourth condition which we call *other*, which allows us to describe distintinctly suboptimal behavior.  Some respondents nearly always used the shorter form for the infrequent object. This behavior is consistent with reversing the prior object frequencies. We use a categorical prior over these cost-meaning structure assuming that the the *other* condition is far less likely than the others.\par
+
+#### Attention during the experiment ($\gamma$)
+Finally, we consider that subjects may be employing a rational strategy, but might be distracted during the experiment. Our attention parameter $\lambda$ captures the probability that a participants chooses an utterance randomly. We use a $\beta(12, 1)$ prior to encode that we expect participants to be paying attention and unlikely to choose randomly during the experiment.\par
+
+The top-right facet of Figure 1 shows the inferred parameters across all participants. In particular, we note that few participants were categorized as using the suboptimal *other* condition strategy and that we inferred that most participants were paying attention throughout the course of the experiment ($\alpha$ levels are well above 0.9).
 
 ```{r plate-notation, fig.env = "figure", fig.pos = "H", fig.align='center', fig.width=2, fig.height=2, set.cap.width=T, num.cols.cap=1, fig.cap = "THIS IS A PLACE-HOLD AND IS INCORRECT"}
 img <- png::readPNG("figs/plate-temp.png")
 grid::grid.raster(img)
 ```
-For each subject we use $n=200$ samples using Metropolis-Hasting to approximate the posterior distribution over parameters. Figure 1. displays inferred subject params across the all participants.
+We infer  each subject we use $n=200$ samples using Metropolis-Hasting to approximate the posterior distribution over parameters. Figure 1. displays inferred subject params across the all participants.
 
 ### Posterior prediction and model checking
 
@@ -149,40 +156,41 @@ The posterior predictive distribution describes the data we should *expect to se
 img <- png::readPNG("figs/bda-vs-baseline-plot.png")
 grid::grid.raster(img)
 ```
-
-Having inferred these subject-level parameters we’d like to ``run” our RSA-participants back through the experiment. That is, for each participant and for each trial they saw, we sample an utterance (e.g. $u \sim S_{\text{subject}_i,\text{ trial}_j}(u|m)$). For example, for a participant in the *combined* condition we would sample an utterance given that the actual participant viewed some object on trial 1, repeating the same process for all 32 trials, 24 of which would require the model to refer to a frequent object and 8 requiring the model to refer to an infrequent object. Having simulated datasets for each participant we can compare the number of times the RSA-agent and actual participant used the short-form in each condition following the analysis in Kanwal et al. (2017).
+Having inferred these subject-level parameters we’d like to ``run” our RSA-participants back through the experiment. Intuitively this means that we consider the actual sequence of trials for each subject. For a particular trial we examine the particular object they are asked to refer to and pass this two our RSA speaker model with that subject’s inferred parameters, generating a corresponding utterance (i.e. we sample $u \sim S_{\text{subject}_i,\text{ trial}_j}(u|m)$). In this way we can compare trial-by-trial production data of the RSA agents to actual subject data.
 
 #  Results
 
-As a baseline we can compare a deterministic speaker using the optimal Zipfian language in each condition. Under this model a speaker in the *combined* condition should always map the short form the most frequent item, but not the infrequent item; in the *time* condition the speaker should always use the short form, regardless of the referent; in the *accuracy* condition the speaker should always use the long forms. This baseline describes a speaker who deterministically chooses an utterance based on the optimal strategy.
+Following the analysis in Kanwal et al. (2017) we examine the proportion of trials in which a particular subject used the short-form (see Kanwal Figure 5). That is, we compare the proportion of trials in which subject $i$ used the short form, comparing this to proportion of trials predicted by our RSA model and by a baseline comparison.
 
-To assess model performance we correlate model posterior predictive values for our RSA-subjects and baseline mode to human data. Table 2 displays $r^2$ values for both models. We find close fit for our rational pragmatic agents, significantly above our baseline model.  Figure X shows the values.
+### Baseline model
+As a baseline we compare a deterministic speaker using the optimal Zipfian language in each condition. Under this model a speaker in the *combined* condition should always map the short form the most frequent item, but not the infrequent item; in the *time* condition the speaker should always use the short form, regardless of the referent; in the *accuracy* condition the speaker should always use the long forms. This baseline describes a speaker who deterministically chooses an utterance based on the optimal strategy.
+
+To assess model performance we correlate model posterior predictive values for our RSA-subjects and baseline mode to human data. Table 2 displays $r^2$ values for both models. We find close fit for our rational pragmatic agents, significantly above our baseline model
 
 \begin{tabular}{ |p{2cm}|p{1cm}|  }
  \hline
   Model & $r^2$ \\
  \hline
- Baseline & $0.397$ \\
- BDA RSA & $0.987$ \\
+ Baseline & $0.466$ \\
+ BDA RSA & $0.972$ \\
  \hline
 \end{tabular}
 
+# General discussion
+
+Zipf (1935) argued that human behavior could largely be understood in terms of effort minimization. In the domain of language, he argued that the particular distributional properties we find in large-scale corpora, such as the fact that more frequent words tend to be shorter, provide evidence for his effort-minimization framework. Kanwal et al. (2017) presented an experimental test of the Zipfian hypothesis conducting a miniature language-learning experiment and isolating the impact a speaker- and listener-pressures directly. In their analysis Kanwal et al. (2017) highlighted that their results were consistent with a Zipfian, language-change account as well as a pragmatic langauge-use account. This distinction, the argued, cannot be assessed with the current set of results as the data collected only constitutes production data, there is not information about the underlying lexicon's the subjects are using.par
+
+To test the pragmatic, language-use account we conducted a Bayesian data analysis, modeling subjects as rational pragmatic agents using the Rational Speech Act framework (Frank & Goodman, 2012; Goodman & Frank, 2016). Inferring subject-level parameters we find good fit with the empirical data providing evidence that subject behavior in this experiment may a result of pragmatic langauge use, rather than lexicon change.\par
+
 ### Limitations of the current analysis
-While our current framework accounts for a large percentage of variance in the human data, there are aspects our current analysis does not capture. Figure 5. Of Kanwal et al. (2017) shows temporal effects throughout the experiment -- speakers are more likely to use the shorter form later in the experiment compared to earlier in the experiment. Our current model does not capture this particular effect. However, there are various ways we might try to instantiate temporal effects corresponding to this kind of convergence. In our current framework this might be instantiated via reduction in uncertainty over the prior frequency distributions for the objects referents. That is, uncertainty at the social-epistemic level -- does your partner have the same priors you do. Taking another angle we might assume that the cost of the long-form becomes more onerous as the task proceeds, making speakers even more likely to want to avoid it. Our current framework provides many opportunities for this type of follow-up.\par
+While our current framework accounts for a large percentage of variance in the human data, there are aspects our current analysis does not capture. Figure 5. Of Kanwal et al. (2017) shows temporal effects throughout the experiment -- speakers are more likely to use the shorter form later in the experiment compared to earlier in the experiment. Our current model does not capture this particular effect. However, there are various ways we might try to instantiate temporal effects corresponding to this kind of convergence. For example, this might be instantiated via reduction in uncertainty over the prior frequency distributions for the objects referents. That is, uncertainty at the social-epistemic level -- does your partner have the same priors you do. Taking another angle we might assume that the cost of the long-form becomes more onerous as the task proceeds, making speakers even more likely to want to avoid it. Our current framework provides many opportunities for this type of follow-up and we consider this as an important area for further investigation\par
 
-  -- the temporal effects identified by the authors -- however, this remains to be a possible extension of the framework we introduce here. Moreover we frame our results in light  argue that this is largely in line with ideas put forth by the authors -- that pragmatic language use may be an essential precursor to more system-level language change. In their own words, "pragmatics-driven asymmetry in usage may or may not lead to an immediate shift in lexical representations, it may be an important first step in such a change."\par
-
-# Connecting pragmatic language use to language change
-
-# Conclusion
-
-Languages around the world display a consistent relationship between word length and frequency -- more frequent words tend to be shorter (CITATIONS).  Zipf (1935) called this particular finding the “Law of Abbreviation” and characterized it in terms of competing speaker listener pressures. While other work has provided indirect evidence consistent with this Zipfian analysis (CITATIONS), Kanwal et al. (2017) attempted to derive this effect while isolating speaker and listener pressures experimentally. In an artificial language learning paradigm the authors showed that subjects were significantly more likely to produce lexicons consistent the “Law of Abbreviation,” but only when both speaker and listener pressures are present. While this evidence is compelling the authors highlight an alternative hypothesis that may have generated the same effect, but could not be distinguished in the current study -- pragmatic language use instead of lexical change. To test this secondary hypothesis we conducted a Bayesian data analysis, modeling participants as rational pragmatic agents using the Rational Speech-act (RSA) framework. Inferring subject-level parameters we are able to fit Kanwal et al. (2017) experimental data with high-levels of accuracy ($r^2=0.986$). While we believe this provides evidence for the pragmatic-language use interpretation we also highlight the compatibility of this interpretation with an additional insight of Kanwal et al. (2017) -- pragmatic language use may serve as an important bootstrap for future language change.
+### The connection between rational langauge use and langauge change
+Recent work has started to draw connection betwen local, in-the-moment language use as modeled by rational, pragmatic agents and aggregate, distribuation-level properties of natural langauge (Goodman & Frank, 2016; Levy, 2018). This is not without precedent. Zipf (1935) implicitly argues language may be optimized at the level of conversation in his example of an optimal speaker and listener language. He describes a set-up in which there are a set of utterance $U$ and meanings $M$ which differ in costs and frequency, respectively. While Zipf was not more explicitly in diescribing the level at which language optimization occurs, his examples mirror the reference game setting we have adopted here. Morever, the explicit connection with rational, pragmatic langauge use was described by Horn (1984) who argued that Zipf's speaker and listener pressures ("Speaker's economy" and "Auditor's ecnonomy") were fundamental to Grice's (1957) derivation of his Cooperative Principle and associated conversational maxims. In general, it is not hard to see a scenario in which pragmatic language use bootstraps later lexicon-level change via processes like inter-generational transmission. Kanwal et al. (2017) present this very idea writing,"pragmatics-driven asymmetry in usage may or may not lead to an immediate shift in lexical representations, it may be an important first step in such a change." Take the exmaple of the current experiment. In the *combined* some subjects produced langauges which only consisted of the shortened form for the frequent object and the long form for the infrequent object. If a subsequent generation of speakers were to learn from this data, they would never be exposed to the original mapping from the frequent obejct's original long-form.In this way pragmatics may serve as an essential precursor to more system-level language change.\par
 
 # Acknowledgements
 
 
-Place acknowledgments (including funding information) in a section at
-the end of the paper.
 
 # References 
 

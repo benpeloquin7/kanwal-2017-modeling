@@ -162,7 +162,7 @@ ggsave('../../paper/figs/bda-vs-baseline-plot.png', bda_vs_baseline_plot, width=
 ```{r}
 df_cors <- df_predictives2 %>%
   mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
-                         ifelse(condition=='combined' & type=='infrequent', 8,
+                         ifelse(condition=='combined' & type=='infrequent', 0,
                                 ifelse(condition=='accuracy' & type=='frequent', 0,
                                        ifelse(condition=='accuracy' & type=='infrequent', 0,
                                               ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
