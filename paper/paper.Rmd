@@ -11,20 +11,7 @@ author-information: >
     \And {\large \bf Michael C. Frank} \\ \texttt{mike@university.edu} \\ Department of Psychology \\ Stanford University}
 
 abstract: 
-    Zipf (1935) argued that the relation between a word's frequency and length was 
-    a universal property of human languages emerging from the competing pressures to minimize speaker- and listener-effort during communication.
-    More recent work has explored these ideas, providing additional evidence for a Zipfian analysis of this relation between frequency and length, what Zipf termed
-    the "Law of Abbreviation". However, this work, including Zipf's original analysis, has primarily relied on large-scale observational data, 
-    only providing indirect evidence for the causal role speaker- and listener-pressures have on the "Law of Abbreviation". 
-    In an effort to isolate these competiting dynamics experimentally,
-    Kanwal et al. (2017) conducted a study using an artificial language learning paradigm. The authors showed that 
-    only when both a speaker- and listener-pressures were present did the Law of Abbreviation emerge. The authors
-    highlight that while their data is consistent with a Zipfian analysis, it is also consistent with an alternative, pragmatic language-use account.
-    We consider this latter account, conducting a Bayesian data analysis using the data from Kanwal et al. (2017) representing
-    subjects as rational, pragmatic agents using the Rational Speech Act framework. Fitting subject-level parameters
-    we find good fit between model posterior-predictive values and data from Kanwal et al. (2017). We argue this
-    analysis provides evidence for a connection between Zipfian notions of efficiency driven language change and Gricean 
-    notions of rational-pragmatic langauge use.
+    Zipf (1935) argued that the relation between a word's frequency and length was a universal property of human languages. This relation, what Zipf called the “Law of Abbreviation”, emerged from the competing pressures to minimize speaker- and listener-effort during communication. Subsequent work has primarily adopted methodological tools in line with Zipf’s original work -- relying on analyses of large-scale observational data. Such analyses, however, can only provide indirect evidence for the causal role speaker- and listener-pressures have on the “Law of Abbreviation.”  In an effort to isolate these competing dynamics experimentally, Kanwal et al. (2017) conducted a study using an artificial language learning paradigm. Only when both a speaker- and listener-pressures were present in a communication game, did the “Law of Abbreviation” emerge. Crucially, the authors highlight that their data is consistent with two possible analyses -- a Zipfian account and a pragmatic, language use account -- but that it is impossible to distinguish between the two given nature of the data collected.  In this work, we consider the pragmatic, language-use account by conducting a Bayesian data analysis, modeling subjects in Kanwal et al. (2017) study using the Rational Speech Act framework. Fitting subject-level parameters we find good fit between model posterior-predictive values and experimental production data. We consider these results in light of arguments put forth in Kanwal et al. (2017) with respect to the relation between pragmatic language use and large-scale language change. 
     
 keywords:
     "Add your choice of indexing terms or keywords; kindly use a semi-colon; between each term."
@@ -193,6 +180,19 @@ Recent work has started to draw connection betwen local, in-the-moment language 
 
 
 # References 
+
+Kanwal et al. (2017)
+
+Frank & Goodman (2012)
+
+Goodman & Frank (2016)
+
+Horn (1984)
+
+Zipf (1935)
+
+Grice (1957)
+
 
 ```{r}
 # References will be generated automatically by Pandoc and included here.
