@@ -180,7 +180,9 @@ Recent theoretical and computational work has highlighted connections between lo
 We note that the connection between Zipfian principles and Gricean, conversational pragmatics was first described by Horn (1984), who argued that Zipf's speaker and listener pressures ("Speaker's economy" and "Auditor's economy") were fundamental to Grice's (1957) derivation of his Cooperative Principle and associated conversational maxims. In general, it is not hard to imagine a scenario in which pragmatic language use bootstraps later lexicon-level change via processes like intergenerational transmission. Kanwal et al. (2017) present this very idea writing,"[whether] pragmatics-driven asymmetry in usage may or may not lead to an immediate shift in lexical representations, it may be an important first step in such a change." Take the example of the current experiment. In the *combined* condition some subjects produced languages which only consisted of the shortened form for the frequent object and the long form for the infrequent object. If a subsequent generation of speakers were to learn from this data, they would never be exposed to the original mapping from the frequent object's original long-form. In this way pragmatics may serve as an essential precursor to more system-level language change.\par
 
 # Acknowledgements
-Fill in
+
+Place acknowledgments (including funding information) in a section at
+the end of the paper.
 
 # References 
 
