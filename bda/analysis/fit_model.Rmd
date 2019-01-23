@@ -5,7 +5,7 @@ date: "11/16/2018"
 output: html_document
 ---
 
-```{r libraries}
+```{r libraries, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(ggthemes)
 library(gridExtra)
@@ -13,7 +13,7 @@ library(rwebppl)
 library(tidyverse)
 ```
 
-```{r}
+```{r helpers}
 # getModelFile()
 # ==============
 # Return a model string from a .wppl file
@@ -33,21 +33,8 @@ getModelFile <- function(modelFile) {
 }
 ```
 
-
-```{r}
-# All data
-f_all_data <- "../data/counts_all.csv"
-dfAll <- read.csv(f_all_data)
-cat("n=", length(dfAll$IP))
-```
-
-```{r}
-# f_bda_model <- "../models/bda.wppl"
-# model_bda <- getModelFile(f_bda_model)
-```
-
-
-```{r}
+```{r track_problem_ips}
+# Problem IPs saving just to track
 # problemIPs <- c('142.196.192.44', 
 #                 '173.242.228.167',
 #                 '104.57.161.213',
@@ -57,298 +44,91 @@ cat("n=", length(dfAll$IP))
 #                 '108.210.65.252')
 ```
 
-```{r}
-# pt <- proc.time()
-# df_bda <- rwebppl::webppl(model_bda, data=dfAll, data_var='rData', cores=4)
-# et <- proc.time() - pt
-# cat(paste("Run time: ", et))
+```{r model-run-data-loading}
+RUN_MODEL <- FALSE
 
-df_predictives <- read.csv("../analysis/df_predictives_20181119.csv")
-```
+# User set this
+# -------------
+MODEL_TYPE <- "NAIVE_BASELINE"
+# -------------
 
-```{r merge bda and raw data}
-df_predictives <- merge(dfAll, df_predictives)
-# write_csv(df_predictives, 'df_predictives_20181119.csv')
-```
+# Experimental data we'd like to model
+f_kanwal_counts_data <- "../data/counts_all.csv"
+# Note this data is restricted to "accuracy", "combined" and "time" sections.
+dfAll <- read.csv(f_kanwal_counts_data)
+cat("n=", length(dfAll$IP), "\n")
 
-Check out Model / Human `r^2`
-```{r}
-df_frequent <- df_predictives %>% 
-  select(IP, condition, alpha, depth, inferredCondition, frequent_cnt, posteriorPredictiveFrequent) %>%
-  mutate(type='frequent') %>%
-  rename(actualCnt=frequent_cnt,
-         estCnt=posteriorPredictiveFrequent)
-  
-df_infrequent <- df_predictives %>% 
-  select(IP, condition, alpha, depth, inferredCondition, infrequent_cnt, posteriorPredictiveInfrequent) %>%
-  mutate(type='infrequent') %>%
-  rename(actualCnt=infrequent_cnt,
-         estCnt=posteriorPredictiveInfrequent)
-
-df_predictives2 <- rbind(df_frequent, df_infrequent)
-cor(df_predictives2$actualCnt, df_predictives2$estCnt)^2
-
-```
-
-```{r}
-plot_all_post_preds <- df_predictives2 %>%
-  # mutate(actualFrequentProps=frequent_cnt / frequent_n,
-  #        actualInrequentProps=infrequent_cnt / infrequent_n,
-  #        estFrequentProps=posteriorPr5edictiveFrequent / frequent_n,
-  #        estInfrequentProps=posteriorPredictiveInfrequent / infrequent_n) %>%
-  # select(IP, condition, inferredCondition, actualFrequentProps, estFrequentProps, actualInrequentProps, estInfrequentProps) %>%
-  # gather(type, value, c(posteriorPredictiveFrequent, posteriorPredictiveInfrequent))
-  ggplot(aes(x=actualCnt, y=estCnt, col=condition), alpha=0.4) +
-    geom_smooth(aes(group=0), method='lm') +
-    geom_point(aes(fill=condition), alpha=0.6, size=3, colour="white", pch=21) +
-    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
-    ylab('Posterior predictive \n counts of short form') +
-    xlab('Human data \n counts of short form') +
-    ggtitle('r^2=0.987') +
-    theme_few() +
-    theme(plot.title = element_text(hjust = 0.5))
-
-ggsave('../../paper/figs/all-post-predictives-plot.png', plot_all_post_preds, width=6, height=3)
-```
-
-## Counts plot 1
-
-```{r}
-df_predictives2 %>%
-  # mutate(actualFrequentProps=frequent_cnt / frequent_n,
-  #        actualInrequentProps=infrequent_cnt / infrequent_n,
-  #        estFrequentProps=posteriorPr5edictiveFrequent / frequent_n,
-  #        estInfrequentProps=posteriorPredictiveInfrequent / infrequent_n) %>%
-  # select(IP, condition, inferredCondition, actualFrequentProps, estFrequentProps, actualInrequentProps, estInfrequentProps) %>%
-  # gather(type, value, c(posteriorPredictiveFrequent, posteriorPredictiveInfrequent))
-  ggplot(aes(x=actualCnt, y=estCnt, col=condition), alpha=0.4) +
-    geom_smooth(method='lm') +
-    geom_point(aes(fill=condition), alpha=0.6, size=3, colour="white", pch=21) +
-    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
-    facet_wrap(~condition, scales="free") +
-    ylab('Posterior predictive \n counts of short form') +
-    xlab('Human data \n counts of short form') +
-    theme_few()
-
-ggsave('../../paper/figs/post-predictives-facet-plot.png', width=6, height=3)
-```
-
-## Counts plot 2
-
-Compare to "optimal baseline" optimal in that `time` condition always pick short, `accuracy` always long, etc.
-```{r}
-bda_vs_baseline_plot <- df_predictives2 %>%
-  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
-                         ifelse(condition=='combined' & type=='infrequent', 8,
-                                ifelse(condition=='accuracy' & type=='frequent', 0,
-                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
-                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
-  gather('model', 'pred', c(baseline, estCnt)) %>%
-  mutate(model=ifelse(model=='estCnt', 'BDA', 'Baseline')) %>%
-  ggplot(aes(x=actualCnt, y=pred, col=condition), alpha=0.4) +
-    geom_point(aes(fill=condition, shape=type), alpha=0.6, size=3) +
-    geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
-    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
-    facet_wrap(~model, scales="free") +
-    ylab('Baseline model \n counts of short form') +
-    xlab('Human data \n counts of short form') +
-    theme_few()
-
-ggsave('../../paper/figs/bda-vs-baseline-plot.png', bda_vs_baseline_plot, width=6, height=3)
-```
-
-# Proportions Analysis
-
-```{r}
-df_cors <- df_predictives2 %>%
-  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
-                         ifelse(condition=='combined' & type=='infrequent', 0,
-                                ifelse(condition=='accuracy' & type=='frequent', 0,
-                                       ifelse(condition=='accuracy' & type=='infrequent', 0,
-                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
-  gather('model', 'pred', c(baseline, estCnt)) %>%
-  group_by(IP, condition, actualCnt, model) %>%
-  summarise(cntShortForms=sum(pred)) %>%
-  group_by(IP, model, condition) %>%
-  summarise(estCnts=sum(cntShortForms),
-            actCnts=sum(actualCnt)) %>%
-  mutate(condition_n=ifelse(condition=='combined' | condition=='accuracy', 32, 64)) %>%
-  mutate(estProp=estCnts/condition_n,
-         actProp=actCnts/condition_n) %>%
-  ungroup
-```
-
-```{r}
-df_cors %>%
-  group_by(model) %>%
-  summarise(n=n(),
-            r=cor(estProp, actProp)^2)
-```
-
-## Proportions plot1
-
-```{r}
-df_cors %>%
-  mutate(model=ifelse(model=='baseline', 'Baseline', 'BDA RSA')) %>%
-  ggplot(aes(x=actProp, y=estProp, col=condition), alpha=0.4) +
-    geom_point(aes(fill=condition), alpha=0.6, size=3) +
-    geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
-    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
-    facet_wrap(~model) +
-    ylab('Baseline model \n counts of short form') +
-    xlab('Human data \n counts of short form') +
-    ylim(0, 1) +
-    xlim(0, 1) +
-    theme_few()
-
-ggsave('../../paper/figs/bda-vs-baseline-plot.png', plot = last_plot(), width=6, height=3)
-```
-
-
-
-
-Some kind of significance test?
-
-```{r}
-fisher.z <- function(r1,r2,n1,n2) {
-  # Todo: review (https://stats.stackexchange.com/questions/64152/are-two-pearson-correlation-coefficients-different)
-  ((0.5*log((1+r1)/(1-r1)))-(0.5*log((1+r2)/(1-r2))))/((1/(n1-3))+(1/(n2-3)))^0.5
+if (RUN_MODEL) {
+  pt <- proc.time()
+  # Baseline or Full BDA
+  model_file <- getModelFileFromType(MODEL_TYPE)
+  model_bda <- getModelFile(model_file)
+  df_bda <- rwebppl::webppl(model_bda, data=dfAll, data_var='rData', cores=4)
+  # Write file
+  write.csv(df_bda, file=file.path("../analysis", paste0("df_", MODEL_TYPE, ".csv")))
+  et <- proc.time() - pt
+  cat(paste("Run time: ", et))
 }
-  
-  
-
 ```
 
 
 ```{r}
-rs <- df_predictives2 %>%
-  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
-                         ifelse(condition=='combined' & type=='infrequent', 8,
-                                ifelse(condition=='accuracy' & type=='frequent', 0,
-                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
-                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
-  filter(type=='frequent') %>%
-  gather(model, value,  c(estCnt, baseline)) %>%
-  select(actualCnt, model, value, condition) %>%
-  group_by(model) %>%
-  summarise(n=n(),
-            r=cor(actualCnt, value)^2)
-print(rs)
-```
-
-
-## Subject-level inferred params?
-
-```{r}
-plot_alpha <- df_predictives %>%
-  ggplot(aes(alpha)) +
-    geom_density() +
-    theme_few()
-
-plot_depth <- df_predictives %>%
-  ggplot(aes(depth)) +
-    geom_histogram(bins=3) +
-    theme_few()
-
-plot_attention <- df_predictives %>%
-  ggplot(aes(inferredAttention)) +
-    geom_density() +
-    theme_few()
-
-plot_condition <- df_predictives %>%
-  mutate(inferredCondition=as.character(inferredCondition)) %>%
-  mutate(inferredCondition=ifelse(inferredCondition=='conventionalized', 'other', inferredCondition)) %>%
-  group_by(inferredCondition) %>%
-  summarise(count=n()) %>%
-  ggplot(aes(x=inferredCondition, y=count)) +
-    geom_bar(stat='identity', position='dodge') +
-    theme_few() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-plot_all_params <- grid.arrange(plot_alpha, plot_depth, plot_attention, plot_condition, nrow=2)
-ggsave('../../paper/figs/inferred-params-plot.png', plot=plot_all_params, width=6, height=4)
-# plot_condition <- df_predictives %>%
-#   group_by(inferredCondition) %>%
-#   summarise(n=n())
-```
-
-
-How well do we infer the strategies?
-```{r}
-mean(df_predictives$inferredCondition == df_predictives$actualCondition)
-```
-
-We use conventionatlized only for a few. These are very strange in that they *almost* always avoid using the short form for the frequent term, but use it for the non-frequent 
-```{r}
-df_predictives %>%
-  filter(inferredCondition=='conventionalized')
-```
-
-
-Output inferred subject-level params
-```{r}
-df_predictives %>%
-  select(IP, alpha, depth, inferredCondition) %>%
-  toJSON() %>%
-  write_lines('subjectInferredParams.json')
-```
-
-
-# Try to model time dynamics
-
-```{r}
-f_temporal_bda_model <- "../models/bdaFig5.wppl"
-model_temporal_bda <- getModelFile(f_temporal_bda_model)
-df_trajectories <- rwebppl::webppl(model_temporal_bda)
-```
-
-
-
-```{r}
-
-df2 <- data.frame()
-for (i in seq(1, length(df_trajectories))) {
-  df2 <- rbind(df2, df_trajectories[[i]])
+# data2predictions()
+# ==================
+# Minor pre-processing for correlation analysis.
+#
+# Parameters
+# ----------
+# modelFile: str
+#  Model type.
+# 
+# Returns
+# -------
+# file.path
+#    File path to model.
+#
+data2predictions <- function(modelType) {
+  df <- read.csv(getModelFittedModelData(modelType))
+  df_frequent <- df %>%
+    select(IP, actualCondition, actualFrequent, posteriorPredictiveFrequent, inferredAttention) %>%
+    mutate(type='frequent') %>%
+    rename(actualCnt=actualFrequent,
+           estCnt=posteriorPredictiveFrequent)
+  df_infrequent <- df %>%
+    select(IP, actualCondition, actualInfrequent, posteriorPredictiveInfrequent, inferredAttention) %>%
+    mutate(type='infrequent') %>%
+    rename(actualCnt=actualInfrequent,
+           estCnt=posteriorPredictiveInfrequent)
+  df_combined <- rbind(df_frequent, df_infrequent) %>%
+    mutate(modelType=modelType)
+  df_combined
 }
 
+# deterministicBaselineDf()
+# =========================
+# Kanwal et al optimal deterministic strategy.
+#
+# Parameters
+# ----------
+# df: Data.Frame
+#   Data frame of model predictions
+# Returns
+# -------
+# Data.Frame
+#    Data frame with deterministic condition-optimal data.
+#
+deterministicBaselineDf <- function(df) {
+  df %>%
+    select(IP, actualCondition, actualCnt, type) %>%
+    mutate(estCnt=ifelse(actualCondition=='combined' & type=='frequent', 24,
+                         # Only use short form for frequent in combined
+                         ifelse(actualCondition=='combined' & type=='infrequent', 0,
+                                # Never use short form during accuracy
+                                ifelse(actualCondition=='accuracy' & type=='frequent', 0,
+                                       ifelse(actualCondition=='accuracy' & type=='infrequent', 0,
+                                              # Always use short form during time
+                                              ifelse(actualCondition=='time' & type=='frequent', 48, 16)))))) %>%
+    mutate(modelType='DETERMINISTIC BASELINE',
+           inferredAttention=1)
+}
 ```
-```{r}
-numIPs <- length(unique(df2$IP))
-df2$trialNum <- rep(seq(1, 31), numIPs)
-```
-
-```{r}
-df2 %>%
-  filter(trialNum==1 | trialNum==31) %>%
-  spread(trialNum, data) %>%
-  rename('first'=`1`, 'last'=`31`) %>%
-  mutate(diff=last-first) %>%
-  ggplot(aes(x=IP, y=diff)) +
-    geom_bar(stat='identity', position='dodge') +
-    theme_few()
-```
-
-
-```{r}
-df2 %>%
-  group_by(trialNum) %>%
-  summarise(n=n(),
-            avgProp=mean(data),
-            ci_high=avgProp + 1.96 *sqrt(avgProp*(1-avgProp)/n),
-            ci_low=avgProp - 1.96 *sqrt(avgProp*(1-avgProp)/n)) %>%
-  ggplot(aes(x=trialNum, y=avgProp)) +
-    geom_line() +
-    geom_errorbar(aes(ymax=ci_high, ymin=ci_low)) +
-    ylim(0, 1) +
-    theme_few()
-```
-
-
-
-
-
-
-
-
-
-

@@ -1,0 +1,314 @@
+---
+title: "Paper_plots"
+author: "Ben"
+date: "1/22/2019"
+output: pdf_document
+---
+
+```{r libraries, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(ggthemes)
+library(gridExtra)
+library(rwebppl)
+library(tidyverse)
+```
+
+```{r helpers}
+# getModgetModelFittedModelData()
+# ===============================
+# Get cached data from model fitting.
+#
+# Parameters
+# ----------
+# modelFile: str
+#  Model type.
+# 
+# Returns
+# -------
+# file.path
+#    File path to model.
+#
+getModelFittedModelData <- function(typ) {
+  dirPath <- '../data/model_predictions_data'
+  file.path(dirPath, paste0("df_", typ, ".csv"))
+}
+```
+
+# Analysis
+```{r combine-all-models}
+df_naive <- data2predictions("NAIVE_BASELINE")
+df_deterministic_baseline <- deterministicBaselineDf(df_naive)
+df_no_recursion <- data2predictions("NO_RECURSION")
+# df_full <- data2predictions("FULL_MODEL")
+
+df_all_models <- rbind(df_naive, df_deterministic_baseline, df_no_recursion)
+```
+
+
+All conditions plot
+```{r}
+df_all_models %>% 
+    rename(`Object referrent`=type,
+           `Experimental condition`=actualCondition) %>%
+    mutate(modelType=ifelse(modelType=="DETERMINISTIC BASELINE", "Deterministic baseline", 
+                            ifelse(modelType=="NAIVE_BASELINE", "Zipf language +\n attention", "RSA-BDA"))) %>%
+    mutate(modelType=factor(modelType, levels=c("Deterministic baseline", "Zipf language +\n attention", "RSA-BDA"))) %>%
+    ggplot(aes(x=actualCnt, y=estCnt, col=`Experimental condition`), alpha=0.4) +
+      geom_point(aes(fill=`Experimental condition`, shape=`Object referrent`), alpha=0.6, size=3) +
+      geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
+      ylab('Model predicted \n counts of short form') +
+      xlab('Human data \ncounts of short form') +
+      theme_few() +
+      facet_grid(~modelType)
+```
+
+Combined condition
+```{r}
+df_all_models %>% 
+  filter(actualCondition=="combined") %>%
+  ggplot(aes(x=actualCnt, y=estCnt, col=actualCondition), alpha=0.4) +
+    geom_point(aes(fill=actualCondition, shape=type), alpha=0.6, size=3) +
+    geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
+    ylab('Baseline model \n counts of short form') +
+    xlab('Human data \n counts of short form') +
+    theme_few() +
+    facet_grid(~modelType)
+```
+
+Correlations
+```{r}
+df_all_models %>% 
+  group_by(modelType) %>%
+  summarise(r2=cor(estCnt, actualCnt)^2)
+
+df_all_models %>% 
+  group_by(modelType, actualCondition) %>%
+  summarise(r2=cor(estCnt, actualCnt)^2)
+```
+
+
+```{r}
+# 20190122 BP lesion test
+df_frequent <- df_bda %>%
+  select(IP, actualCondition, actualFrequent, posteriorPredictiveFrequent, inferredAttention) %>%
+  mutate(type='frequent') %>%
+  rename(actualCnt=actualFrequent,
+         estCnt=posteriorPredictiveFrequent)
+  
+df_infrequent <- df_bda %>% 
+  select(IP, actualCondition, actualInfrequent, posteriorPredictiveInfrequent, inferredAttention) %>%
+  mutate(type='infrequent') %>%
+  rename(actualCnt=actualInfrequent,
+         estCnt=posteriorPredictiveInfrequent)
+
+df_predictives2 <- rbind(df_frequent, df_infrequent)
+cor(df_predictives2$actualCnt, df_predictives2$estCnt)^2
+```
+
+
+## Subject-level inferred params?
+
+#### alpha plot
+```{r}
+df_alphas <- rbind(df_naive, df_no_recursion)
+
+df_alphas %>%
+  ggplot(aes(inferredAttention, col=modelType, fill=modelType)) +
+    geom_density(alpha=0.3) +
+    theme_few()
+
+```
+
+#### all params
+```{r}
+df_RSA <- read.csv(getModelFittedModelData("NO_RECURSION"))
+
+plot_alpha <- df_RSA %>%
+  group_by(alpha) %>%
+  summarise(n=n()) %>%
+  ggplot(aes(x=alpha, y=n)) +
+    geom_bar(stat='identity') +
+    xlab("Alpha") +
+    ylab("Count") +
+    theme_few()
+
+plot_attention <- df_RSA %>%
+  ggplot(aes(inferredAttention)) +
+    geom_density(alpha=0.3, fill='blue') +
+    xlab("Attention") +
+    ylab("Density") +
+    theme_few()
+  
+plot_condition <- df_RSA %>%
+  mutate(inferredCondition=as.character(inferredCondition)) %>%
+  mutate(inferredCondition=ifelse(inferredCondition=='conventionalized', 'other', inferredCondition)) %>%
+  group_by(inferredCondition) %>%
+  summarise(count=n()) %>%
+  ggplot(aes(x=inferredCondition, y=count)) +
+    geom_bar(stat='identity', position='dodge') +
+    xlab("Condition") +
+    ylab("Count") +
+    theme_few() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+bottom_row <- plot_grid(plot_condition, plot_alpha, labels = c('B', 'C'), align = 'h', rel_widths = c(1, 1.3))
+plot_all_params <- plot_grid(plot_attention, bottom_row, labels = c('A', ''), ncol = 1, rel_heights = c(1, 1.2))
+# ggsave('../../paper/figs/inferred-params-plot.png', plot=plot_all_params, width=6, height=4)
+```
+
+# Save below
+-------------
+
+### Proportions Analysis
+
+```{r}
+df_cors <- df_predictives2 %>%
+  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
+                         ifelse(condition=='combined' & type=='infrequent', 0,
+                                ifelse(condition=='accuracy' & type=='frequent', 0,
+                                       ifelse(condition=='accuracy' & type=='infrequent', 0,
+                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
+  gather('model', 'pred', c(baseline, estCnt)) %>%
+  group_by(IP, condition, actualCnt, model) %>%
+  summarise(cntShortForms=sum(pred)) %>%
+  group_by(IP, model, condition) %>%
+  summarise(estCnts=sum(cntShortForms),
+            actCnts=sum(actualCnt)) %>%
+  mutate(condition_n=ifelse(condition=='combined' | condition=='accuracy', 32, 64)) %>%
+  mutate(estProp=estCnts/condition_n,
+         actProp=actCnts/condition_n) %>%
+  ungroup
+```
+
+```{r}
+df_cors %>%
+  group_by(model) %>%
+  summarise(n=n(),
+            r=cor(estProp, actProp)^2)
+```
+
+## Proportions plot1
+
+```{r}
+df_cors %>%
+  mutate(model=ifelse(model=='baseline', 'Baseline', 'BDA RSA')) %>%
+  ggplot(aes(x=actProp, y=estProp, col=condition), alpha=0.4) +
+    geom_point(aes(fill=condition), alpha=0.6, size=3) +
+    geom_abline(intercept=0, slope=1, col='grey', alpha=0.4) +
+    # geom_point(aes(x=actualInrequentProps, y=estInfrequentProps, col=condition), alpha=0.4) +
+    facet_wrap(~model) +
+    ylab('Baseline model \n counts of short form') +
+    xlab('Human data \n counts of short form') +
+    ylim(0, 1) +
+    xlim(0, 1) +
+    theme_few()
+
+ggsave('../../paper/figs/bda-vs-baseline-plot.png', plot = last_plot(), width=6, height=3)
+```
+
+
+
+
+Some kind of significance test?
+
+```{r}
+fisher.z <- function(r1,r2,n1,n2) {
+  # Todo: review (https://stats.stackexchange.com/questions/64152/are-two-pearson-correlation-coefficients-different)
+  ((0.5*log((1+r1)/(1-r1)))-(0.5*log((1+r2)/(1-r2))))/((1/(n1-3))+(1/(n2-3)))^0.5
+}
+  
+  
+
+```
+
+
+```{r}
+rs <- df_predictives2 %>%
+  mutate(baseline=ifelse(condition=='combined' & type=='frequent', 24,
+                         ifelse(condition=='combined' & type=='infrequent', 8,
+                                ifelse(condition=='accuracy' & type=='frequent', 0,
+                                       ifelse(condition=='accuracy' & type=='infrequent', 24,
+                                              ifelse(condition=='time' & type=='frequent', 48, 16)))))) %>%
+  filter(type=='frequent') %>%
+  gather(model, value,  c(estCnt, baseline)) %>%
+  select(actualCnt, model, value, condition) %>%
+  group_by(model) %>%
+  summarise(n=n(),
+            r=cor(actualCnt, value)^2)
+print(rs)
+```
+
+
+
+
+
+How well do we infer the strategies?
+```{r}
+mean(df_predictives$inferredCondition == df_predictives$actualCondition)
+```
+
+We use conventionatlized only for a few. These are very strange in that they *almost* always avoid using the short form for the frequent term, but use it for the non-frequent 
+```{r}
+df_predictives %>%
+  filter(inferredCondition=='conventionalized')
+```
+
+
+Output inferred subject-level params
+```{r}
+df_predictives %>%
+  select(IP, alpha, depth, inferredCondition) %>%
+  toJSON() %>%
+  write_lines('subjectInferredParams.json')
+```
+
+
+# Try to model time dynamics
+
+```{r}
+f_temporal_bda_model <- "../models/bdaFig5.wppl"
+model_temporal_bda <- getModelFile(f_temporal_bda_model)
+df_trajectories <- rwebppl::webppl(model_temporal_bda)
+```
+
+
+
+```{r}
+
+df2 <- data.frame()
+for (i in seq(1, length(df_trajectories))) {
+  df2 <- rbind(df2, df_trajectories[[i]])
+}
+
+```
+```{r}
+numIPs <- length(unique(df2$IP))
+df2$trialNum <- rep(seq(1, 31), numIPs)
+```
+
+```{r}
+df2 %>%
+  filter(trialNum==1 | trialNum==31) %>%
+  spread(trialNum, data) %>%
+  rename('first'=`1`, 'last'=`31`) %>%
+  mutate(diff=last-first) %>%
+  ggplot(aes(x=IP, y=diff)) +
+    geom_bar(stat='identity', position='dodge') +
+    theme_few()
+```
+
+
+```{r}
+df2 %>%
+  group_by(trialNum) %>%
+  summarise(n=n(),
+            avgProp=mean(data),
+            ci_high=avgProp + 1.96 *sqrt(avgProp*(1-avgProp)/n),
+            ci_low=avgProp - 1.96 *sqrt(avgProp*(1-avgProp)/n)) %>%
+  ggplot(aes(x=trialNum, y=avgProp)) +
+    geom_line() +
+    geom_errorbar(aes(ymax=ci_high, ymin=ci_low)) +
+    ylim(0, 1) +
+    theme_few()
+```
+
