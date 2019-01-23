@@ -1,6 +1,8 @@
-/* bda.wppl
+/* baseline_no_recursion.wppl
 
-Full model with RSA alpha and recursion parameters.
+Model does not contain RSA recursion parameter.
+
+We get as good fit as a full model with both alpha and recursion.
 
 */
 
@@ -73,7 +75,7 @@ var L0 = cache(function(u, params) {
   Recursion base-case, reasons about literal semantics.
 
   */
-	Infer({method: 'enumerate'}, function() {
+  Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: params['pMeanings']})
       condition(litMeaning(u, m))
       return m
@@ -89,7 +91,7 @@ var S1 = cache(function(m, params) {
   informativity w.r.t to the listener.
 
   */
-	Infer({method: 'enumerate'}, function()  {
+  Infer({method: 'enumerate'}, function()  {
       var u = utterancesPrior()
       var L = L0(u, params)
       factor(params['alpha'] * (L.score(m) - cost(u, params)))
@@ -106,7 +108,7 @@ var L1 = cache(function(u, params) {
   informativity w.r.t to the listener.
 
   */
-	Infer({method: 'enumerate'}, function() {
+  Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: params['pMeanings']})
       var S = S1(m, params)
       factor(S.score(u))
@@ -115,7 +117,7 @@ var L1 = cache(function(u, params) {
 })
 
 var S2 = cache(function(m, params) {
-	Infer({method: 'enumerate'}, function()  {
+  Infer({method: 'enumerate'}, function()  {
       var u = utterancesPrior()
       var L = L1(u, params)
       factor(params['alpha'] * (L.score(m) - cost(u, params)))
@@ -124,7 +126,7 @@ var S2 = cache(function(m, params) {
 })
 
 var L2 = cache(function(u, params) {
-	Infer({method: 'enumerate'}, function() {
+  Infer({method: 'enumerate'}, function() {
       var m = categorical({vs: meanings, ps: params['pMeanings']})
       var S = S2(m, params)
       factor(S.score(u))
@@ -133,7 +135,7 @@ var L2 = cache(function(u, params) {
 })
 
 var S3 = cache(function(m, params) {
-	Infer({method: 'enumerate'}, function()  {
+  Infer({method: 'enumerate'}, function()  {
       var u = utterancesPrior()
       var L = L2(u, params)
       factor(params['alpha'] * (L.score(m) - cost(u, params)))
@@ -255,7 +257,7 @@ var inferSubjParams = function(datum) {
 
   */
   Infer(opts, function() {
-    var depth = uniformDraw(['1', '2', '3'])
+    var depth = '1'
     var conditionType = categorical({vs: ['combined', 'accuracy', 'time', 'conventionalized'], ps: [10, 10, 10, 1]})
     var alpha = uniformDraw(_.range(1, 30))
     var attention = beta(12, 1)
@@ -271,23 +273,23 @@ var inferSubjParams = function(datum) {
 }
 
 var results = mapData({data: rData}, function(datum) {
-	console.log("Running IP: ", datum.IP)
-	var inferredSubjParams = inferSubjParams(datum)
+  console.log("Running IP: ", datum.IP)
+  var inferredSubjParams = inferSubjParams(datum)
    
-	var alpha = sample(marginalize(inferredSubjParams, function(x) {
-		return x['inferredAlpha']
-	}))
-  var depth = sample(marginalize(inferredSubjParams, function(x) {
-		return x['inferredDepth']
-	}))
-	var inferredCondition = sample(marginalize(inferredSubjParams, function(x) {
-		return x['inferredCondition']
-	}))
-	var attention = marginalize(inferredSubjParams, function(x) {
-		return x['inferredAttention']
-	})
-	var inferredAttention = expectation(attention)
-	var result = {
+  var alpha = sample(marginalize(inferredSubjParams, function(x) {
+    return x['inferredAlpha']
+  }))
+    var depth = sample(marginalize(inferredSubjParams, function(x) {
+    return x['inferredDepth']
+  }))
+  var inferredCondition = sample(marginalize(inferredSubjParams, function(x) {
+    return x['inferredCondition']
+  }))
+  var attention = marginalize(inferredSubjParams, function(x) {
+    return x['inferredAttention']
+  })
+  var inferredAttention = expectation(attention)
+  var result = {
       'IP': datum.IP,
       'alpha': alpha,
       'depth': depth,
@@ -298,7 +300,7 @@ var results = mapData({data: rData}, function(datum) {
       'actualInfrequent': datum.infrequent_cnt,
       'posteriorPredictiveFrequent': expectation(runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'frequent', datum.frequent_n)),
       'posteriorPredictiveInfrequent': expectation(runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'infrequent', datum.infrequent_n))
-	}
-  	return result
+  }
+    return result
 })
 results
