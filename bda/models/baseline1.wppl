@@ -1,0 +1,134 @@
+/* baseline1.wppl
+
+Full baseline model. This instantations a deterministic
+speaker with some error that is random sampling from the valid mappings
+
+e.g.
+
+if m='zopudon' then with prob(1-attention) we sample from ['zop', 'zopudon']
+
+*/
+
+
+var accuracySpeaker = function(m, attention) {
+  return flip(attention) ? m : 'zop'
+}
+var combinedSpeaker = function(m, attention) {
+  if (m == 'zopudon') {
+    return flip(attention) ? 'zop' : 'zopudon'
+  } else {
+    return flip(attention) ? 'zopekil' : 'zop'
+  }
+}
+var timeSpeaker = function(m, attention) {
+  return flip(attention) ? 'zop' : m
+}
+
+var getBaselineSpeaker = function(condition) {
+  return condition == 'accuracy' ? accuracySpeaker :
+    condition == 'combined' ? combinedSpeaker : timeSpeaker
+}
+
+var baselineSpeaker = function(m, condition_, attention) {
+  Infer({method: 'enumerate'}, function() {
+    var speaker = getBaselineSpeaker(condition_)
+    return speaker(m, attention)
+  })
+}
+
+var countIsShort = function(utterances) {
+  return sum(map(function(x) {return x == 'zop'}, utterances))
+}
+
+
+var runExperiment = function(subjParams, displayType, n) {
+  var conditionType = subjParams['conditionType']
+  var meaning = displayType == 'frequent' ? 'zopudon' : 'zopekil'
+  var attention = subjParams['attention']
+  var speaker = baselineSpeaker
+  var speak = function() {
+    return sample(speaker(meaning, conditionType, attention))
+  }
+  var utterances_ = repeat(n, speak)
+  var count = countIsShort(utterances_)
+  return count
+
+}
+
+
+
+var runSubjectOpts = {'method': 'MCMC', 'samples': 200, 'kernel': 'MH'}
+// var runSubjectOpts = {'method': 'MCMC', 'samples': 1000, kernel: {HMC: {steps: 10, stepSize: 1}}}
+var runSubject = function(subjId, conditionType, attention, displayType, n) {
+  /* Return a distribution over a participants use of the short form.
+
+  Returns
+  -------
+  Distr
+    Distribution over number of times short form is used.
+
+  */
+  Infer(runSubjectOpts, function() {
+    // Baseline model has only a single parameter
+    var params = {
+      'attention': attention,
+      'conditionType': conditionType
+    }
+    return runExperiment(params, displayType, n)
+  })
+}
+
+var opts = {method: 'MCMC', 'samples': 200,  kernel: 'MH'}
+var inferSubjParams = function(datum) {
+  /* Infer parameters for a single subject.
+
+  Returns
+  -------
+  dict
+    Dictionary of subject-level parameters.
+
+  */
+  Infer(opts, function() {
+    var conditionType = categorical({vs: ['combined', 'accuracy', 'time'], ps: [1, 1, 1]})
+    var attention = beta(12, 1)
+    var frequentDistr = runSubject(datum.IP, conditionType, attention, 'frequent', datum.frequent_n)
+    var infrequentDistr = runSubject(datum.IP, conditionType, attention, 'infrequent', datum.infrequent_n)
+    
+    observe(frequentDistr, datum.frequent_cnt)
+    observe(infrequentDistr, datum.infrequent_cnt)
+    return {
+      'condition': conditionType, 
+      'inferredAttention': attention
+    }
+  })
+}
+
+var results = mapData({data: rData}, function(datum) {
+	console.log("Running IP: ", datum.IP)
+	var inferredSubjParams = inferSubjParams(datum)
+	var alpha = 0
+  var depth = 0
+	var attention = marginalize(inferredSubjParams, function(x) {
+		return x['inferredAttention']
+	})
+	var inferredAttention = expectation(attention)
+  var inferredCondition = sample(marginalize(inferredSubjParams, function(x) {
+    return x['inferredCondition']
+  }))
+  var condition = datum['condition']
+
+	var result = {
+      'IP': datum.IP,
+      'inferredAttention': expectation(attention),
+      'inferredCondition': inferredCondition,
+      'alpha': alpha,
+      'depth': depth,
+      'actualCondition': datum.condition,
+      'actualFrequent': datum.frequent_cnt,
+      'actualInfrequent': datum.infrequent_cnt,
+      'posteriorPredictiveFrequent': expectation(runSubject(datum.IP, condition, inferredAttention, 'frequent', datum.frequent_n)),
+      'posteriorPredictiveInfrequent': expectation(runSubject(datum.IP,condition, inferredAttention, 'infrequent', datum.infrequent_n))
+	}
+  	return result
+})
+results
