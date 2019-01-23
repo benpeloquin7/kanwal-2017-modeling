@@ -45,7 +45,7 @@ getModelFile <- function(modelFile) {
 ```
 
 ```{r model-run-data-loading}
-RUN_MODEL <- FALSE
+RUN_MODEL <- TRUE
 
 # User set this
 # -------------
@@ -69,6 +69,14 @@ if (RUN_MODEL) {
   et <- proc.time() - pt
   cat(paste("Run time: ", et))
 }
+
+# Problems
+# 108.196.136.202 - worked once
+# 117.229.19.52 - worked once
+# 122.161.26.31
+# 140.141.208.86
+# 80.101.212.2
+# 24.113.49.186
 ```
 
 
