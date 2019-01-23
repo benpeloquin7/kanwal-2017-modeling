@@ -1,31 +1,46 @@
 /* baseline.wppl
 
 Full baseline model. This instantations a deterministic
-speaker with some error (our attention parameter).
-
-As of 20190122 we are not able to fit this model Kanwal et al. (2017) 
-data.
+speaker with some error that is random sampling from the vocab (our attention parameter).
 
 */
 
+var vocab = ['zopudon', 'zopekil', 'zop']
+
+var reversedSpeaker = function(m, attention) {
+  if (m == 'zopekil') {
+    return flip(attention) ? 'zop' : uniformDraw(vocab)
+  } else {
+    return flip(attention) ? 'zopudon' : uniformDraw(vocab)
+  }
+}
 
 var accuracySpeaker = function(m, attention) {
-  return flip(attention) ? m : 'zop'
+  if (m == 'zopudon') {
+    return flip(attention) ? 'zopudon' : uniformDraw(vocab)
+  } else {
+    return flip(attention) ? 'zopekil' : uniformDraw(vocab)
+  }
 }
 var combinedSpeaker = function(m, attention) {
   if (m == 'zopudon') {
-    return flip(attention) ? 'zop' : 'zopudon'
+    return flip(attention) ? 'zop' : uniformDraw(vocab)
   } else {
-    return flip(attention) ? 'zopekil' : 'zop'
+    return flip(attention) ? 'zopekil' : uniformDraw(vocab)
   }
 }
 var timeSpeaker = function(m, attention) {
-  return flip(attention) ? 'zop' : m
+  if (m == 'zopudon') {
+    return flip(attention) ? 'zop' : uniformDraw(vocab)
+  } else {
+    return flip(attention) ? 'zop' : uniformDraw(vocab)
+  }
 }
 
 var getBaselineSpeaker = function(condition) {
   return condition == 'accuracy' ? accuracySpeaker :
-    condition == 'combined' ? combinedSpeaker : timeSpeaker
+    condition == 'combined' ? combinedSpeaker :
+    condition == 'time' ? timeSpeaker : reversedSpeaker
 }
 
 var baselineSpeaker = function(m, condition_, attention) {
@@ -77,7 +92,7 @@ var runSubject = function(subjId, conditionType, attention, displayType, n) {
   })
 }
 
-var opts = {method: 'MCMC', 'samples': 200,  kernel: 'MH'}
+var opts = {method: 'MCMC', 'samples': 500, burn: 100,  kernel: 'MH'}
 var inferSubjParams = function(datum) {
   /* Infer parameters for a single subject.
 
@@ -88,7 +103,7 @@ var inferSubjParams = function(datum) {
 
   */
   Infer(opts, function() {
-    var conditionType = categorical({vs: ['combined', 'accuracy', 'time'], ps: [1, 1, 1]})
+    var conditionType = categorical({vs: ['combined', 'accuracy', 'time', 'other'], ps: [1, 1, 1, 1]})
     var attention = beta(12, 1)
     var frequentDistr = runSubject(datum.IP, conditionType, attention, 'frequent', datum.frequent_n)
     var infrequentDistr = runSubject(datum.IP, conditionType, attention, 'infrequent', datum.infrequent_n)
