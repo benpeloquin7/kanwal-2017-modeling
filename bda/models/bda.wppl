@@ -14,6 +14,15 @@ var Geometric = function(p) {
   })
 }
 
+// Get modal value of discrete (assumed categorical) distribution
+var getModalValue = function(dist) {
+  var supp = dist.support()
+  var scores = map(function(x) {Math.exp(dist.score(x))}, supp)
+  var maxVal = _.max(scores)
+  var maxIdx = _.indexOf(scores, maxVal)
+  return supp[maxIdx]
+}
+
 // Meanings and utterances
 var utterances = ['zop', 'zopudon', 'zopekil']
 var utterancesPrior = function() {
@@ -219,8 +228,8 @@ var runExperiment = function(subjParams, displayType, n) {
   return countIsShort(utterances_)
 }
 
-var runSubjectOpts = {'method': 'MCMC', 'samples': 1000, 'kernel': 'MH'}
-// var runSubjectOpts = {'method': 'MCMC', 'samples': 1000, kernel: {HMC: {steps: 10, stepSize: 1}}}
+// Note we share inference options between subject param inference and posterior modeling
+var opts = {'method': 'MCMC', 'samples': 400, 'burn': 100, 'kernel': 'MH'}
 var runSubject = function(subjId, alpha, depth, conditionType, attention, displayType, n) {
   /* Return a distribution over a participants use of the short form.
 
@@ -230,7 +239,7 @@ var runSubject = function(subjId, alpha, depth, conditionType, attention, displa
     Distribution over number of times short form is used.
 
   */
-  Infer(runSubjectOpts, function() {
+  Infer(opts, function() {
     var params = {
       'alpha': alpha,
       'depth': depth,
@@ -241,10 +250,6 @@ var runSubject = function(subjId, alpha, depth, conditionType, attention, displa
   })
 }
 
-// var opts = {method: 'MCMC', 'samples': 100, kernel: {HMC: {steps: 2, stepSize: 0.5}}, callbacks: [editor.MCMCProgress()]}
-var opts = {method: 'MCMC', 'samples': 200,  kernel: 'MH'}
-// var opts = {method: "MCMC", onlyMAP:true,  samples: 200, burn: 100, callbacks: [editor.MCMCProgress()]};
-// var opts = {'method': 'MCMC', 'samples': 1000, kernel: {HMC: {steps: 10, stepSize: 1}}}
 var inferSubjParams = function(datum) {
   /* Infer parameters for a single subject.
 
@@ -280,25 +285,33 @@ var results = mapData({data: rData}, function(datum) {
   var depth = sample(marginalize(inferredSubjParams, function(x) {
 		return x['inferredDepth']
 	}))
-	var inferredCondition = sample(marginalize(inferredSubjParams, function(x) {
+	var inferredCondition = getModalValue(marginalize(inferredSubjParams, function(x) {
 		return x['inferredCondition']
 	}))
 	var attention = marginalize(inferredSubjParams, function(x) {
 		return x['inferredAttention']
 	})
-	var inferredAttention = expectation(attention)
-	var result = {
+  var inferredAttention = expectation(attention)
+  var posteriorFrequent = runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'frequent', datum.frequent_n)
+  var posteriorInfrequent = runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'infrequent', datum.infrequent_n)
+  var posteriorPredictiveFrequent = expectation(posteriorFrequent)
+  var posteriorPredictiveInfrequent = expectation(posteriorInfrequent)
+  var scoreFrequent = posteriorFrequent.score(datum.frequent_cnt)
+  var scoreInfrequent = posteriorInfrequent.score(datum.infrequent_cnt)
+  var result = {
       'IP': datum.IP,
       'alpha': alpha,
       'depth': depth,
       'inferredCondition': inferredCondition,
-      'inferredAttention': expectation(attention),
+      'inferredAttention': inferredAttention,
       'actualCondition': datum.condition,
       'actualFrequent': datum.frequent_cnt,
       'actualInfrequent': datum.infrequent_cnt,
-      'posteriorPredictiveFrequent': expectation(runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'frequent', datum.frequent_n)),
-      'posteriorPredictiveInfrequent': expectation(runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'infrequent', datum.infrequent_n))
-	}
-  	return result
+      'posteriorPredictiveFrequent': expectation(posteriorFrequent),
+      'posteriorPredictiveInfrequent': expectation(posteriorInfrequent),
+      'scoreFrequent': scoreFrequent,
+      'scoreInfrequent': scoreInfrequent
+  }
+  return result
 })
 results

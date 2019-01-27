@@ -3,6 +3,9 @@
 Full baseline model. This instantations a deterministic
 speaker with some error that is random sampling from the vocab (our attention parameter).
 
+Most important is the combinedSpeaker. This function operationalizes a
+"changed" lexicon with some error probability.  
+
 */
 
 var vocab = ['zopudon', 'zopekil', 'zop']
@@ -14,7 +17,6 @@ var reversedSpeaker = function(m, attention) {
     return flip(attention) ? 'zopudon' : uniformDraw(vocab)
   }
 }
-
 var accuracySpeaker = function(m, attention) {
   if (m == 'zopudon') {
     return flip(attention) ? 'zopudon' : uniformDraw(vocab)
@@ -36,7 +38,6 @@ var timeSpeaker = function(m, attention) {
     return flip(attention) ? 'zop' : uniformDraw(vocab)
   }
 }
-
 var getBaselineSpeaker = function(condition) {
   return condition == 'accuracy' ? accuracySpeaker :
     condition == 'combined' ? combinedSpeaker :
@@ -48,6 +49,15 @@ var baselineSpeaker = function(m, condition_, attention) {
     var speaker = getBaselineSpeaker(condition_)
     return speaker(m, attention)
   })
+}
+
+// Get modal value of discrete (assumed categorical) distribution
+var getModalValue = function(dist) {
+  var supp = dist.support()
+  var scores = map(function(x) {Math.exp(dist.score(x))}, supp)
+  var maxVal = _.max(scores)
+  var maxIdx = _.indexOf(scores, maxVal)
+  return supp[maxIdx]
 }
 
 var countIsShort = function(utterances) {
@@ -70,11 +80,15 @@ var runExperiment = function(subjParams, displayType, n) {
 }
 
 
-
-var runSubjectOpts = {'method': 'MCMC', 'samples': 200, 'kernel': 'MH'}
-// var runSubjectOpts = {'method': 'MCMC', 'samples': 1000, kernel: {HMC: {steps: 10, stepSize: 1}}}
-var runSubject = function(subjId, conditionType, attention, displayType, n) {
+// Note we share inference options between subject param inference and posterior modeling
+var opts = {'method': 'MCMC', 'samples': 400, 'burn': 100, 'kernel': 'MH'}
+var runSubject = function(subjId, alpha, depth, conditionType, attention, displayType, n) {
   /* Return a distribution over a participants use of the short form.
+
+  Parameters
+  ----------
+  Note that alpha and depth are included so that function
+  signature is analogous to RSA moel in bda.wppl.
 
   Returns
   -------
@@ -82,7 +96,7 @@ var runSubject = function(subjId, conditionType, attention, displayType, n) {
     Distribution over number of times short form is used.
 
   */
-  Infer(runSubjectOpts, function() {
+  Infer(opts, function() {
     // Baseline model has only a single parameter
     var params = {
       'attention': attention,
@@ -92,7 +106,6 @@ var runSubject = function(subjId, conditionType, attention, displayType, n) {
   })
 }
 
-var opts = {method: 'MCMC', 'samples': 500, burn: 100,  kernel: 'MH'}
 var inferSubjParams = function(datum) {
   /* Infer parameters for a single subject.
 
@@ -103,15 +116,20 @@ var inferSubjParams = function(datum) {
 
   */
   Infer(opts, function() {
-    var conditionType = categorical({vs: ['combined', 'accuracy', 'time', 'other'], ps: [1, 1, 1, 1]})
+    var conditionType = categorical({vs: ['combined', 'accuracy', 'time', 'conventionalized'], ps: [10, 10, 10, 1]})
     var attention = beta(12, 1)
-    var frequentDistr = runSubject(datum.IP, conditionType, attention, 'frequent', datum.frequent_n)
-    var infrequentDistr = runSubject(datum.IP, conditionType, attention, 'infrequent', datum.infrequent_n)
+    // See parameters note in runSubject function
+    // ----------
+    var alpha = 0
+    var depth = 0
+    // ----------
+    var frequentDistr = runSubject(datum.IP, alpha, depth, conditionType, attention, 'frequent', datum.frequent_n)
+    var infrequentDistr = runSubject(datum.IP, alpha, depth, conditionType, attention, 'infrequent', datum.infrequent_n)
     
     observe(frequentDistr, datum.frequent_cnt)
     observe(infrequentDistr, datum.infrequent_cnt)
     return {
-      'condition': conditionType, 
+      'inferredCondition': conditionType, 
       'inferredAttention': attention
     }
   })
@@ -126,23 +144,29 @@ var results = mapData({data: rData}, function(datum) {
 		return x['inferredAttention']
 	})
 	var inferredAttention = expectation(attention)
-  var inferredCondition = sample(marginalize(inferredSubjParams, function(x) {
+  var inferredCondition = getModalValue(marginalize(inferredSubjParams, function(x) {
     return x['inferredCondition']
   }))
-  var condition = datum['condition']
-
-	var result = {
+  var posteriorFrequent = runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'frequent', datum.frequent_n)
+  var posteriorInfrequent = runSubject(datum.IP, alpha, depth, inferredCondition, inferredAttention, 'infrequent', datum.infrequent_n)
+  var posteriorPredictiveFrequent = expectation(posteriorFrequent)
+  var posteriorPredictiveInfrequent = expectation(posteriorInfrequent)
+  var scoreFrequent = posteriorFrequent.score(datum.frequent_cnt)
+  var scoreInfrequent = posteriorInfrequent.score(datum.infrequent_cnt)
+  var result = {
       'IP': datum.IP,
-      'inferredAttention': expectation(attention),
-      'inferredCondition': inferredCondition,
       'alpha': alpha,
       'depth': depth,
+      'inferredCondition': inferredCondition,
+      'inferredAttention': expectation(attention),
       'actualCondition': datum.condition,
       'actualFrequent': datum.frequent_cnt,
       'actualInfrequent': datum.infrequent_cnt,
-      'posteriorPredictiveFrequent': expectation(runSubject(datum.IP, condition, inferredAttention, 'frequent', datum.frequent_n)),
-      'posteriorPredictiveInfrequent': expectation(runSubject(datum.IP,condition, inferredAttention, 'infrequent', datum.infrequent_n))
-	}
-  	return result
+      'posteriorPredictiveFrequent': expectation(posteriorFrequent),
+      'posteriorPredictiveInfrequent': expectation(posteriorInfrequent),
+      'scoreFrequent': scoreFrequent,
+      'scoreInfrequent': scoreInfrequent
+  }
+  return result
 })
 results
